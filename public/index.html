@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>集金チェッカー</title>
+    <meta name="description" content="LINEで共有できる集金管理ツール。飲み会やイベントの集金状況をみんなで確認できます。">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box }
+        body { font-family: 'Noto Sans JP', sans-serif; background: #f5f5f5; min-height: 100vh }
+        .header { background: linear-gradient(135deg, #ff0033, #e60028); color: #fff; padding: 20px 16px; text-align: center; position: sticky; top: 0; z-index: 10 }
+        .header h1 { font-size: 17px; font-weight: 900 }
+        .header .sub { font-size: 12px; opacity: .8; margin-top: 4px }
+        .stats { display: flex; justify-content: center; gap: 10px; margin-top: 10px; font-size: 12px; flex-wrap: wrap }
+        .stats .s { background: rgba(255,255,255,.15); padding: 5px 12px; border-radius: 16px }
+        .stats b { color: #ffd700 }
+        .content { padding: 12px; max-width: 420px; margin: 0 auto }
+        .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06) }
+        .card h3 { font-size: 14px; color: #333; margin-bottom: 10px }
+        label { font-size: 12px; font-weight: 700; color: #666; display: block; margin-bottom: 4px }
+        input, select { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; background: #fff }
+        input:focus, select:focus { border-color: #ff0033 }
+        .btn { display: block; width: 100%; border: none; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; color: #fff; margin-top: 8px; text-align: center; text-decoration: none }
+        .btn:active { opacity: .8 }
+        .btn-red { background: linear-gradient(135deg, #ff0033, #e60028) }
+        .btn-green { background: linear-gradient(135deg, #00b900, #009900) }
+        .btn-paypay { background: linear-gradient(135deg, #ff0033, #cc0029); display: flex; align-items: center; justify-content: center; gap: 6px }
+        .btn-orange { background: linear-gradient(135deg, #ff6b00, #ff8c00) }
+        .btn-outline { background: #fff; color: #ff0033; border: 2px solid #ff0033 }
+        .btn-sm { font-size: 12px; padding: 8px 14px; margin-top: 0; width: auto; display: inline-block; border-radius: 8px }
+        .btn-sm.btn-orange { background: linear-gradient(135deg, #ff6b00, #ff8c00); color: #fff; border: none; cursor: pointer; font-weight: 700; font-family: inherit; padding: 5px 10px; font-size: 11px }
+        .btn-danger-sm { font-size: 11px; padding: 5px 10px; margin-top: 0; width: auto; display: inline-block; border-radius: 8px; background: #e74c3c; color: #fff; border: none; cursor: pointer; font-weight: 700; font-family: inherit }
+        .btn-danger-sm:active { opacity: .7 }
+        .bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 8px 0 }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #00b900, #4caf50); border-radius: 4px; transition: width .5s }
+        .person { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.04); user-select: none }
+        .person.paid { background: linear-gradient(135deg, #e8f5e9, #f1f8e9) }
+        .person.me { border: 2px solid #ff6b00 }
+        .check { width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0 }
+        .person.paid .check { background: #00b900; border-color: #00b900; color: #fff }
+        .person .info { flex: 1; min-width: 0 }
+        .person .name { font-size: 14px; font-weight: 700 }
+        .person .meta { font-size: 10px; color: #999 }
+        .person .actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center }
+        .badge { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 700 }
+        .badge-unpaid { background: #fff3e0; color: #e65100 }
+        .badge-paid { background: #e8f5e9; color: #2e7d32 }
+        .badge-self { background: #fff3e0; color: #e65100 }
+        .badge-confirm { background: #e8f5e9; color: #1b5e20; border: 1px solid #4caf50 }
+        .badge-tier { background: #f3e5f5; color: #7b1fa2; margin-right: 4px }
+        .join-box { text-align: center; padding: 8px 0 }
+
+        /* 区分別カラー凡例 */
+        .tier-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px }
+        .tier-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px }
+        .tier-legend-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0 }
+
+        /* 区分別背景色（カード） */
+        .person[data-tier-color="0"] { background: linear-gradient(135deg, #e3f2fd, #bbdefb) }
+        .person[data-tier-color="1"] { background: linear-gradient(135deg, #fce4ec, #f8bbd9) }
+        .person[data-tier-color="2"] { background: linear-gradient(135deg, #e8f5e9, #c8e6c9) }
+        .person[data-tier-color="3"] { background: linear-gradient(135deg, #fff3e0, #ffe0b2) }
+        .person[data-tier-color="4"] { background: linear-gradient(135deg, #ede7f6, #d1c4e9) }
+        .person[data-tier-color="5"] { background: linear-gradient(135deg, #e0f2f1, #b2dfdb) }
+        /* 支払い済みは緑系で統一 */
+        .person.paid { background: linear-gradient(135deg, #e8f5e9, #f1f8e9) !important }
+        .join-box input, .join-box select { max-width: 240px; display: inline-block; text-align: center; margin-bottom: 6px }
+        .msg { text-align: center; padding: 16px; color: #999; font-size: 12px }
+        .share-btns { display: flex; gap: 8px; margin-top: 8px }
+        .share-btns .btn { flex: 1; font-size: 12px; padding: 10px }
+        .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
+        .hidden { display: none }
+
+        /* 料金区分の動的フォーム */
+        .tier-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; align-items: center; padding: 10px; background: #f9f9f9; border-radius: 10px }
+        .tier-row input { flex: 1; min-width: 0 }
+        .tier-row .tier-name { flex: 1; min-width: 80px }
+        .tier-row .tier-amount { flex: 1; min-width: 80px }
+        .tier-row .tier-paypay { flex: 100%; font-size: 12px }
+        .tier-row .del-tier { width: 32px; height: 32px; border: none; background: #ffeaea; color: #e74c3c; border-radius: 8px; font-size: 16px; cursor: pointer; flex-shrink: 0 }
+        .tier-row .del-tier:active { opacity: .7 }
+        .add-tier { font-size: 12px; color: #ff0033; cursor: pointer; text-decoration: underline; display: inline-block; margin-top: 4px }
+
+        /* 自分のアクションカード */
+        .my-card { border: 2px solid #ff6b00; background: linear-gradient(135deg, #fff8f0, #fff3e8) }
+        .self-done { background: #e8f5e9; color: #2e7d32; font-size: 12px; padding: 10px; border-radius: 10px; text-align: center; font-weight: 700 }
+
+        .clickable { cursor: pointer }
+        .clickable:active { transform: scale(.98) }
+
+        /* 幹事モードバナー */
+        .admin-banner { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #e65100; padding: 8px 12px; border-radius: 10px; font-size: 11px; font-weight: 700; text-align: center; margin-bottom: 8px; border: 1px solid #ffcc80 }
+
+        /* 幹事金額変更フォーム */
+        .edit-tiers-card { background: linear-gradient(135deg, #fff8e1, #ffecb3); border: 2px solid #ffc107; border-radius: 14px; padding: 16px; margin-bottom: 10px }
+        .edit-tiers-card h3 { font-size: 14px; color: #f57f17; margin-bottom: 10px }
+        .edit-tier-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px }
+        .edit-tier-row .tier-label { font-size: 13px; font-weight: 700; flex: 1; min-width: 0 }
+        .edit-tier-row input { width: 100px; text-align: right; flex: 0 0 auto }
+
+        /* LINE名自動入力インジケーター */
+        .line-info { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #2e7d32; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px }
+        .line-info img { width: 24px; height: 24px; border-radius: 50% }
+
+        @media (max-width: 360px) {
+            .stats { gap: 6px; font-size: 11px }
+            .person { padding: 10px }
+            .tier-row input { font-size: 12px; padding: 8px }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 id="headerTitle">💰 集金チェッカー</h1>
+    <div class="sub" id="headerSub"></div>
+    <div class="stats hidden" id="statsBar">
+        <div class="s">参加 <b id="joinCount">0</b>人 <span id="tierBreakdown" style="font-size:10px;opacity:.85"></span></div>
+        <div class="s">済 <b id="paidCount">0</b>人</div>
+        <div class="s">回収 <b id="paidAmt">¥0</b></div>
+    </div>
+</div>
+
+<div class="content">
+    <!-- ===== 作成ビュー ===== -->
+    <div id="createView">
+        <div class="card">
+            <h3>📝 新しい集金を作成</h3>
+            <div style="margin-bottom:8px">
+                <label>イベント名</label>
+                <input type="text" id="cName" placeholder="例: 3月飲み会🍻">
+            </div>
+            <div>
+                <label>💴 料金区分（区分ごとにPayPayリンクを設定可）</label>
+                <div id="tierRows"></div>
+                <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
+            </div>
+            <button class="btn btn-red" id="createBtn">✅ 作成する</button>
+        </div>
+    </div>
+
+    <!-- ===== イベントビュー ===== -->
+    <div id="eventView" class="hidden">
+        <!-- 幹事モードバナー -->
+        <div id="adminBanner" class="admin-banner hidden">🔓 幹事モードON — タップで確認チェック、🗑で参加者削除</div>
+
+        <!-- 幹事金額変更フォーム -->
+        <div id="editTiersCard" class="edit-tiers-card hidden">
+            <h3>💴 金額・PayPayリンクを設定</h3>
+            <div style="font-size:11px;color:#795548;margin-bottom:10px;line-height:1.6">
+                💡 お会計後に金額を入力してください。<br>
+                PayPayリンクを貼ると、参加者のページに送金ボタンが表示されます。
+            </div>
+            <div id="editTierRows"></div>
+            <button class="btn btn-red" id="saveTiersBtn" style="margin-top:4px">✅ 金額を更新</button>
+        </div>
+
+
+        <!-- 仕組み説明カード -->
+        <div class="card" style="background:linear-gradient(135deg,#f0f4ff,#e8eeff);border:1px solid #c5cfe8;padding:14px 16px">
+            <div style="font-size:13px;font-weight:700;color:#1a237e;margin-bottom:8px">📌 使い方</div>
+            <div style="font-size:12px;color:#333;line-height:1.7">
+                <div style="margin-bottom:4px">1️⃣ 下のフォームから<b>参加登録</b>（LINE名が自動入力されます）</div>
+                <div style="margin-bottom:4px">2️⃣ PayPayで送金したら<b>「💸 送金しました」</b>をタップ</div>
+                <div style="margin-bottom:4px">3️⃣ 幹事が確認したら <b>✅ 確認済み</b> になります</div>
+                <div style="margin-top:6px;color:#e65100">📣 参加する友達にもこのリンクを共有してね！</div>
+            </div>
+        </div>
+
+        <!-- 自分のアクションカード（参加済みの場合に表示） -->
+        <div id="myActionCard" class="card my-card hidden">
+            <h3>💸 あなたのステータス</h3>
+            <div id="myStatus"></div>
+        </div>
+
+        <!-- 参加フォーム -->
+        <div class="card" id="joinCard">
+            <h3 id="joinTitle">🙋 参加する</h3>
+            <div id="lineInfo" class="line-info hidden"></div>
+            <div class="join-box">
+                <input type="text" id="joinName" placeholder="あなたの名前">
+                <select id="joinTier"></select>
+                <button class="btn btn-green" style="max-width:200px;margin:0 auto" id="joinBtn">参加する！</button>
+            </div>
+        </div>
+
+        <!-- 進捗バー -->
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span id="evLabel"></span>
+                <span style="font-weight:900;color:#ff0033" id="evTotal"></span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+            <div id="tierSummary" style="font-size:10px;color:#888;margin-top:4px"></div>
+        </div>
+
+        <!-- メンバーリスト -->
+        <div id="memberList"></div>
+
+        <div class="share-btns">
+            <button class="btn btn-outline" id="refreshBtn">🔄 更新</button>
+            <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
+        </div>
+        <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
+        <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var API = location.origin;
+    var eventId = null;
+    var eventData = null;
+    var isAdmin = false;
+    var myName = '';
+    var adminToken = '';
+    var liffProfile = null; // LINE LIFFプロフィール
+    var LIFF_ID = '2009555688-Md2LIQl6';
+
+    // ===== LIFF初期化 =====
+    function initLiff() {
+        if (typeof liff === 'undefined') return;
+        liff.init({ liffId: LIFF_ID }).then(function() {
+            if (liff.isLoggedIn()) {
+                liff.getProfile().then(function(profile) {
+                    liffProfile = profile;
+                    var nameInput = document.getElementById('joinName');
+                    var lineInfoDiv = document.getElementById('lineInfo');
+                    // 名前が空の場合のみ自動入力
+                    if (nameInput && !nameInput.value) {
+                        nameInput.value = profile.displayName;
+                    }
+                    // LINE情報インジケーター表示
+                    if (lineInfoDiv) {
+                        lineInfoDiv.classList.remove('hidden');
+                        lineInfoDiv.innerHTML = '';
+                        if (profile.pictureUrl) {
+                            var img = document.createElement('img');
+                            img.src = profile.pictureUrl;
+                            lineInfoDiv.appendChild(img);
+                        }
+                        lineInfoDiv.appendChild(document.createTextNode('LINEアカウント: ' + profile.displayName));
+                    }
+                });
+            } else {
+                // LINEアプリ内でなければログインを促す（任意）
+                // 外部ブラウザの場合はLIFFログインにリダイレクト
+                if (!liff.isInClient()) {
+                    // 外部ブラウザではログインしない（手入力を許可）
+                } else {
+                    liff.login();
+                }
+            }
+        }).catch(function(err) {
+            console.log('LIFF init error:', err);
+        });
+    }
+
+    // DOM要素取得
+    var createView = document.getElementById('createView');
+    var eventView = document.getElementById('eventView');
+    var statsBar = document.getElementById('statsBar');
+    var memberList = document.getElementById('memberList');
+
+    // 要素を安全に作成
+    function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+    function makeText(tag, text, className) {
+        var el = document.createElement(tag); el.textContent = text;
+        if (className) el.className = className; return el;
+    }
+    // 安全にpriceTiersを取得
+    function getTiers() {
+        if (!eventData) return [];
+        return Array.isArray(eventData.priceTiers) ? eventData.priceTiers : [];
+    }
+
+    // 区分ごとのカラーインデックスマップ（区分名 → 0〜5）
+    var TIER_COLORS = [
+        { bg: '#1565c0', dot: '#1976d2' }, // 青（男子など）
+        { bg: '#c62828', dot: '#e53935' }, // 赤/ピンク（女子など）
+        { bg: '#2e7d32', dot: '#43a047' }, // 緑
+        { bg: '#e65100', dot: '#fb8c00' }, // オレンジ
+        { bg: '#6a1b9a', dot: '#8e24aa' }, // 紫
+        { bg: '#00695c', dot: '#00897b' }, // ティール
+    ];
+
+    // 現在のイベントの区分カラーマップを返す
+    function getTierColorMap() {
+        var tiers = getTiers();
+        var map = {};
+        for (var i = 0; i < tiers.length; i++) {
+            map[tiers[i].label] = i % TIER_COLORS.length;
+        }
+        return map;
+    }
+
+    // ===== 料金区分フォーム =====
+    var tierContainer = document.getElementById('tierRows');
+    function addTierRow(label, amount, paypayLink) {
+        var row = document.createElement('div');
+        row.className = 'tier-row';
+        var labelInput = document.createElement('input');
+        labelInput.type = 'text'; labelInput.placeholder = '区分名（例: 男子）';
+        labelInput.className = 'tier-name'; labelInput.value = label || '';
+        var amountInput = document.createElement('input');
+        amountInput.type = 'number'; amountInput.placeholder = '金額';
+        amountInput.className = 'tier-amount';
+        amountInput.inputMode = 'numeric'; amountInput.value = amount || '';
+        amountInput.max = '9999999';
+        var del = document.createElement('button');
+        del.className = 'del-tier'; del.textContent = '✕'; del.type = 'button';
+        del.addEventListener('click', function() {
+            if (tierContainer.children.length > 1) row.remove();
+        });
+        var paypayInput = document.createElement('input');
+        paypayInput.type = 'url'; paypayInput.placeholder = 'PayPayリンク（任意）';
+        paypayInput.className = 'tier-paypay'; paypayInput.value = paypayLink || '';
+        row.appendChild(labelInput); row.appendChild(amountInput); row.appendChild(del);
+        row.appendChild(paypayInput);
+        tierContainer.appendChild(row);
+    }
+    // 初期行: 2つ
+    addTierRow('男子', '', ''); addTierRow('女子', '', '');
+    document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
+
+    // ===== 初期化 =====
+    function init() {
+        var parts = location.pathname.split('/');
+        if (parts.length >= 3 && parts[1] === 'collect' && parts[2]) {
+            eventId = parts[2];
+            // URLの?admin=TOKENパラメータから幹事トークンを取得・保存
+            var urlParams = new URLSearchParams(location.search);
+            var urlAdminToken = urlParams.get('admin');
+            if (urlAdminToken) {
+                try { localStorage.setItem('collect_admin_' + eventId, urlAdminToken); } catch(e) {}
+                // URLからadminパラメータを除去（トークンをURLに残さない）
+                urlParams.delete('admin');
+                var cleanUrl = location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                history.replaceState(null, '', cleanUrl);
+            }
+            try {
+                myName = localStorage.getItem('collect_name_' + eventId) || '';
+                adminToken = localStorage.getItem('collect_admin_' + eventId) || '';
+            } catch(e) {}
+            // ref=パラメータから招待者名を取得・保存
+            var refParam = urlParams.get('ref');
+            if (refParam) {
+                try { localStorage.setItem('collect_ref_' + eventId, refParam); } catch(e) {}
+                urlParams.delete('ref');
+                var cleanUrl2 = location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                history.replaceState(null, '', cleanUrl2);
+            }
+            loadEvent();
+        }
+        // LIFF初期化
+        initLiff();
+    }
+
+
+
+    // ===== 金額変更（幹事用） =====
+    document.getElementById('saveTiersBtn').addEventListener('click', function() {
+        var inputs = document.getElementById('editTierRows').querySelectorAll('input[data-tier]');
+        var tiers = getTiers();
+        var newTiers = [];
+        for (var i = 0; i < inputs.length; i++) {
+            var label = inputs[i].getAttribute('data-tier');
+            var amount = parseInt(inputs[i].value) || 0;
+            var ppLink = document.querySelector('input[data-paypay="' + label + '"]');
+            var paypayLink = ppLink ? ppLink.value.trim() : '';
+            newTiers.push({ label: label, amount: amount, paypayLink: paypayLink });
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/update-tiers/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                alert('✅ 金額を更新しました！');
+                loadEvent();
+            } else if (xhr.status === 403) {
+                alert('❗ 幹事権限がありません');
+            }
+        };
+        xhr.onerror = function() { alert('通信エラー'); };
+        xhr.send(JSON.stringify({ priceTiers: newTiers, adminToken: adminToken }));
+    });
+
+    // ===== イベント作成 =====
+    document.getElementById('createBtn').addEventListener('click', function() {
+        var name = document.getElementById('cName').value.trim() || '集金';
+        var tiers = [];
+        var rows = tierContainer.querySelectorAll('.tier-row');
+        for (var i = 0; i < rows.length; i++) {
+            var nameInput = rows[i].querySelector('.tier-name');
+            var amountInput = rows[i].querySelector('.tier-amount');
+            var paypayInput = rows[i].querySelector('.tier-paypay');
+            var tLabel = (nameInput.value || '').trim();
+            var tAmount = parseInt(amountInput.value) || 0;
+            var tPaypay = (paypayInput.value || '').trim();
+            if (tAmount > 9999999) tAmount = 9999999;
+            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay });
+        }
+        if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/create', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                // 幹事トークンをlocalStorageに保存
+                if (data.adminToken) {
+                    try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
+                }
+                location.href = '/collect/' + data.id;
+            } else { alert('作成に失敗: ' + xhr.status); }
+        };
+        xhr.onerror = function() { alert('通信エラーが発生しました'); };
+        xhr.send(JSON.stringify({ name: name, priceTiers: tiers }));
+    });
+
+    // ===== 参加登録 =====
+    document.getElementById('joinBtn').addEventListener('click', function() {
+        var name = document.getElementById('joinName').value.trim();
+        var tier = document.getElementById('joinTier').value;
+        if (!name) { alert('名前を入力してください'); return; }
+        // 招待者名を取得
+        var refName = '';
+        try { refName = localStorage.getItem('collect_ref_' + eventId) || ''; } catch(e) {}
+        var addedByName = myName || refName || '';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/join/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                if (data.status === 'already_joined') alert(name + 'さんは既に参加済みです');
+                // 最初の参加時のみmyNameを設定（他の人を追加しても上書きしない）
+                if (!myName) {
+                    myName = name;
+                    try { localStorage.setItem('collect_name_' + eventId, name); } catch(e) {}
+                }
+                document.getElementById('joinName').value = '';
+                loadEvent();
+            }
+        };
+        xhr.onerror = function() { alert('通信エラー'); };
+        xhr.send(JSON.stringify({ name: name, tier: tier, addedBy: addedByName }));
+    });
+
+    // ===== 更新・共有 =====
+    document.getElementById('refreshBtn').addEventListener('click', function() { loadEvent(); });
+    document.getElementById('shareBtn').addEventListener('click', function() {
+        var refName = myName ? encodeURIComponent(myName) : '';
+        var url = 'https://liff.line.me/' + LIFF_ID + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var tiers = getTiers();
+        var members = eventData ? (eventData.members || []) : [];
+        var paid = 0;
+        for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
+        var tierInfo = '';
+        if (tiers.length > 1) {
+            tierInfo = tiers.map(function(t) { return t.label + ': ¥' + (t.amount || 0).toLocaleString(); }).join(' / ');
+        } else if (tiers.length === 1) {
+            tierInfo = '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
+        }
+        var eventName = eventData ? (eventData.name || '集金') : '集金';
+        var text = '💰 ' + eventName + '\n✅ ' + paid + '/' + members.length + '人 支払い済\n' + tierInfo + '\n\n👇 参加・支払い報告はこちら\n' + url;
+        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+    });
+
+    // ===== 幹事モード =====
+    document.getElementById('adminToggle').addEventListener('click', function() {
+        if (!adminToken) {
+            alert('❗ 幹事権限がありません\nイベントを作成した端末からのみ幹事モードを使えます。');
+            return;
+        }
+        // サーバー側でトークンを検証
+        var self = this;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', API + '/api/verify-admin/' + eventId + '?token=' + encodeURIComponent(adminToken), true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                if (data.valid) {
+                    isAdmin = !isAdmin;
+                    self.textContent = isAdmin ? '🔓 幹事モードOFF' : '🔐 幹事モード';
+                    if (eventData) renderEvent();
+                } else {
+                    adminToken = '';
+                    try { localStorage.removeItem('collect_admin_' + eventId); } catch(e) {}
+                    alert('❗ 幹事トークンが無効です。幹事権限がありません。');
+                    self.style.display = 'none';
+                }
+            }
+        };
+        xhr.send();
+    });
+
+    // ===== イベント読み込み =====
+    function loadEvent() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', API + '/api/event/' + eventId, true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    eventData = JSON.parse(xhr.responseText);
+                } catch(e) {
+                    eventData = null;
+                    alert('データの読み込みに失敗しました');
+                    return;
+                }
+                renderEvent();
+            }
+            else { location.href = '/'; }
+        };
+        xhr.onerror = function() { alert('通信エラー: サーバーに接続できません'); };
+        xhr.send();
+    }
+
+    // ===== 表示更新 =====
+    function renderEvent() {
+        if (!eventData) return;
+        createView.classList.add('hidden');
+        eventView.classList.remove('hidden');
+        statsBar.classList.remove('hidden');
+
+        // 幹事モードリンクの表示制御（トークンがない場合は非表示）
+        document.getElementById('adminToggle').style.display = adminToken ? '' : 'none';
+
+        // 幹事モードバナー
+        document.getElementById('adminBanner').classList.toggle('hidden', !isAdmin);
+
+        // 幹事金額変更フォームの表示制御
+        var editTiersCard = document.getElementById('editTiersCard');
+        editTiersCard.classList.toggle('hidden', !isAdmin);
+        if (isAdmin) {
+            var editTierRows = document.getElementById('editTierRows');
+            clearChildren(editTierRows);
+            var tiers0 = getTiers();
+            for (var et = 0; et < tiers0.length; et++) {
+                var row = document.createElement('div');
+                row.className = 'edit-tier-row';
+                row.style.flexWrap = 'wrap';
+                var lbl = document.createElement('span');
+                lbl.className = 'tier-label';
+                lbl.textContent = tiers0[et].label || '一般';
+                var inp = document.createElement('input');
+                inp.type = 'number';
+                inp.inputMode = 'numeric';
+                inp.value = tiers0[et].amount || '';
+                inp.setAttribute('data-tier', tiers0[et].label);
+                inp.placeholder = '金額（未定なら空欄）';
+                var yen = document.createElement('span');
+                yen.textContent = '円';
+                yen.style.fontSize = '13px';
+                var ppInput = document.createElement('input');
+                ppInput.type = 'url';
+                ppInput.value = tiers0[et].paypayLink || '';
+                ppInput.setAttribute('data-paypay', tiers0[et].label);
+                ppInput.placeholder = 'PayPayリンク（任意）';
+                ppInput.style.cssText = 'flex:100%;font-size:12px;margin-top:2px';
+                row.appendChild(lbl);
+                row.appendChild(inp);
+                row.appendChild(yen);
+                row.appendChild(ppInput);
+                editTierRows.appendChild(row);
+            }
+        }
+
+
+
+        document.getElementById('headerTitle').textContent = '💰 ' + (eventData.name || '集金');
+        // ヘッダーサブ: 料金一覧
+        var tiers = getTiers();
+        var subText = tiers.map(function(t) {
+            return (t.label || '一般') + ' ' + (t.amount > 0 ? '¥' + t.amount.toLocaleString() : '未定');
+        }).join(' / ');
+        document.getElementById('headerSub').textContent = subText;
+
+        var members = eventData.members || [];
+        var paidCount = 0, totalAmt = 0, paidAmt = 0;
+        for (var i = 0; i < members.length; i++) {
+            totalAmt += members[i].amount || 0;
+            if (members[i].paid) { paidCount++; paidAmt += members[i].amount || 0; }
+        }
+        var pct = totalAmt > 0 ? (paidAmt / totalAmt * 100) : 0;
+
+        document.getElementById('joinCount').textContent = members.length;
+        // 区分別人数をヘッダーに表示
+        var tierBreakdown = document.getElementById('tierBreakdown');
+        if (tiers.length >= 2) {
+            var parts = tiers.map(function(t) {
+                var count = members.filter(function(m) { return m.tier === t.label; }).length;
+                return t.label + count + '人';
+            });
+            tierBreakdown.textContent = '（' + parts.join(' ') + '）';
+        } else {
+            tierBreakdown.textContent = '';
+        }
+        document.getElementById('paidCount').textContent = paidCount;
+        document.getElementById('paidAmt').textContent = '¥' + paidAmt.toLocaleString();
+        document.getElementById('evLabel').textContent = eventData.name || '集金';
+        document.getElementById('evTotal').textContent = '¥' + paidAmt.toLocaleString() + ' / ¥' + totalAmt.toLocaleString();
+        document.getElementById('barFill').style.width = pct + '%';
+
+        // 料金区分ごとの内訳
+        var tierSummary = document.getElementById('tierSummary');
+        clearChildren(tierSummary);
+        if (tiers.length > 1) {
+            var parts = tiers.map(function(t) {
+                var count = members.filter(function(m) { return m.tier === t.label; }).length;
+                return (t.label || '') + ': ' + count + '人';
+            });
+            tierSummary.textContent = parts.join(' / ');
+        }
+
+        // 参加フォームの料金区分セレクトボックスを更新
+        var tierSelect = document.getElementById('joinTier');
+        clearChildren(tierSelect);
+        for (var k = 0; k < tiers.length; k++) {
+            var opt = document.createElement('option');
+            opt.value = tiers[k].label || '';
+            opt.textContent = (tiers[k].label || '一般') + '（¥' + (tiers[k].amount || 0).toLocaleString() + '）';
+            tierSelect.appendChild(opt);
+        }
+
+        // 自分のアクションカード
+        renderMyActions();
+
+        // メンバーリスト
+        clearChildren(memberList);
+        if (members.length === 0) {
+            memberList.appendChild(makeText('div', 'まだ参加者がいません🙈', 'msg'));
+            return;
+        }
+        // 未払い→支払い済の順にソート
+        var sorted = members.slice().sort(function(a, b) {
+            if (a.paid === b.paid) return 0;
+            return a.paid ? 1 : -1;
+        });
+
+        // 区分凡例を表示（区分が2つ以上の場合）
+        var tierColorMap = getTierColorMap();
+        var tiers = getTiers();
+        if (tiers.length >= 2) {
+            var legend = document.createElement('div');
+            legend.className = 'tier-legend';
+            for (var ti = 0; ti < tiers.length; ti++) {
+                var colorIdx = tierColorMap[tiers[ti].label] !== undefined ? tierColorMap[tiers[ti].label] : 0;
+                var color = TIER_COLORS[colorIdx];
+                var item = document.createElement('div');
+                item.className = 'tier-legend-item';
+                item.style.background = color.bg + '18';
+                item.style.border = '1.5px solid ' + color.bg + '55';
+                var dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.style.background = color.dot;
+                var lbl = document.createTextNode(tiers[ti].label);
+                item.appendChild(dot);
+                item.appendChild(lbl);
+                legend.appendChild(item);
+            }
+            memberList.appendChild(legend);
+        }
+
+        for (var j = 0; j < sorted.length; j++) {
+            memberList.appendChild(createPersonEl(sorted[j], tierColorMap));
+        }
+    }
+
+    // ===== 自分のアクションカード =====
+    function renderMyActions() {
+        var card = document.getElementById('myActionCard');
+        var status = document.getElementById('myStatus');
+        clearChildren(status);
+
+        if (!myName) { card.classList.add('hidden'); return; }
+        var members = eventData ? (eventData.members || []) : [];
+        var me = null;
+        for (var i = 0; i < members.length; i++) {
+            if (members[i].name === myName) { me = members[i]; break; }
+        }
+        if (!me) { card.classList.add('hidden'); return; }
+
+        card.classList.remove('hidden');
+        // 参加済みの場合はフォームを非表示にする
+        document.getElementById('joinCard').classList.add('hidden');
+
+        var amountText = (me.amount > 0) ? '¥' + me.amount.toLocaleString() : '未定';
+        var nameDiv = makeText('div', '👤 ' + me.name + '（' + (me.tier || '一般') + ' ' + amountText + '）', '');
+        nameDiv.style.fontWeight = '700'; nameDiv.style.marginBottom = '8px';
+        status.appendChild(nameDiv);
+
+        if (me.paid) {
+            // 支払い済み
+            var done = makeText('div', '✅ 支払い済み' + (me.selfReported ? '（自己申告）' : ''), 'self-done');
+            status.appendChild(done);
+        } else if (adminToken) {
+            // 幹事は自己申告不要 — 自分で確認済みにできる
+            var adminMsg = makeText('div', '👑 あなたは幹事です', '');
+            adminMsg.style.cssText = 'font-size:13px;color:#e65100;font-weight:700;margin-bottom:8px';
+            status.appendChild(adminMsg);
+            var confirmSelfBtn = document.createElement('button');
+            confirmSelfBtn.className = 'btn btn-green';
+            confirmSelfBtn.textContent = '✅ 自分を支払い済みにする';
+            confirmSelfBtn.addEventListener('click', function() {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', API + '/api/confirm/' + eventId, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() { loadEvent(); };
+                xhr.send(JSON.stringify({ name: myName, adminToken: adminToken }));
+            });
+            status.appendChild(confirmSelfBtn);
+        } else {
+            // 区分のPayPayリンクを取得
+            var tiers = getTiers();
+            var tierInfo = null;
+            for (var t = 0; t < tiers.length; t++) {
+                if (tiers[t].label === me.tier) { tierInfo = tiers[t]; break; }
+            }
+            var tierPaypayLink = tierInfo && tierInfo.paypayLink ? tierInfo.paypayLink : '';
+            if (tierPaypayLink) {
+                var payBtn = document.createElement('button');
+                payBtn.className = 'btn btn-paypay'; payBtn.style.marginBottom = '6px';
+                payBtn.textContent = '💱 PayPayで ¥' + (me.amount || 0).toLocaleString() + ' 送金する';
+                payBtn.addEventListener('click', function() {
+                    // PayPay送金画面を開く
+                    if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
+                        // LIFFアプリ内: 外部ブラウザで開く
+                        liff.openWindow({ url: tierPaypayLink, external: true });
+                    } else {
+                        // 通常ブラウザ: 新しいタブで開く
+                        window.open(tierPaypayLink, '_blank');
+                    }
+                    // 画面に戻った時に自動リロード + 送金確認
+                    var returnHandler = function() {
+                        if (document.visibilityState === 'visible') {
+                            document.removeEventListener('visibilitychange', returnHandler);
+                            // 少し待ってからリロード＆確認
+                            setTimeout(function() {
+                                loadEvent();
+                                if (confirm('💸 PayPayで送金しましたか？\n「OK」を押すと送金済みとして報告します。')) {
+                                    selfReport(myName);
+                                }
+                            }, 500);
+                        }
+                    };
+                    document.addEventListener('visibilitychange', returnHandler);
+                });
+                status.appendChild(payBtn);
+            }
+            // 自己申告ボタン
+            var reportBtn = document.createElement('button');
+            reportBtn.className = 'btn btn-orange';
+            reportBtn.textContent = '💸 送金しました！（自己申告）';
+            reportBtn.addEventListener('click', function() {
+                if (!confirm('¥' + (me.amount || 0).toLocaleString() + ' を送金しましたか？')) return;
+                selfReport(myName);
+            });
+            status.appendChild(reportBtn);
+        }
+    }
+
+    // ===== メンバー要素を作成 =====
+    function createPersonEl(m, tierColorMap) {
+        var div = document.createElement('div');
+        var classes = 'person' + (m.paid ? ' paid' : '');
+        if (m.name === myName) classes += ' me';
+        if (isAdmin) classes += ' clickable';
+        div.className = classes;
+
+        // 区分別背景色（未払いの場合のみ適用、支払い済みは緑で統一）
+        if (!m.paid && tierColorMap) {
+            var colorIdx = tierColorMap[m.tier];
+            if (colorIdx !== undefined) {
+                div.setAttribute('data-tier-color', colorIdx);
+            }
+        }
+
+        var check = document.createElement('div');
+        check.className = 'check';
+        check.textContent = m.paid ? '✓' : '';
+
+        var info = document.createElement('div');
+        info.className = 'info';
+        var nameEl = document.createElement('div');
+        nameEl.className = 'name';
+        var nameText = (m.name || '') + (m.name === myName ? ' 👈' : '');
+        if (m.addedBy && m.addedBy !== m.name && m.addedBy !== '幹事') {
+            nameText += '（' + m.addedBy + 'の招待）';
+        } else if (m.addedBy === '幹事') {
+            nameText += '（幹事が追加）';
+        }
+        nameEl.textContent = nameText;
+        var meta = document.createElement('div');
+        meta.className = 'meta';
+
+        // 料金区分バッジ
+        var tierBadge = document.createElement('span');
+        tierBadge.className = 'badge badge-tier';
+        tierBadge.textContent = (m.tier || '一般') + ' ¥' + (m.amount || 0).toLocaleString();
+        meta.appendChild(tierBadge);
+
+        // ステータスバッジ（3段階）
+        if (m.paid && m.selfReported && !m.confirmed) {
+            var selfBadge = document.createElement('span');
+            selfBadge.className = 'badge badge-self';
+            selfBadge.textContent = '📝 自己申告';
+            meta.appendChild(selfBadge);
+        } else if (m.paid && m.confirmed) {
+            var confBadge = document.createElement('span');
+            confBadge.className = 'badge badge-confirm';
+            confBadge.textContent = '✅ 幹事確認済';
+            meta.appendChild(confBadge);
+        }
+
+        var timeText = '';
+        if (m.paid && m.paidAt) {
+            timeText = new Date(m.paidAt).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) + ' 支払済';
+        } else if (m.joinedAt) {
+            timeText = new Date(m.joinedAt).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) + ' 参加';
+        }
+        meta.appendChild(document.createTextNode(' ' + timeText));
+        info.appendChild(nameEl); info.appendChild(meta);
+
+        // 右側: バッジ + 削除ボタン（幹事モード時）
+        var actionsDiv = document.createElement('div');
+        actionsDiv.className = 'actions';
+
+        var badge = document.createElement('span');
+        if (m.paid && m.confirmed) {
+            badge.className = 'badge badge-confirm';
+            badge.textContent = '✅ 確認済';
+        } else if (m.paid && m.selfReported) {
+            badge.className = 'badge badge-self';
+            badge.textContent = '📝 申告済';
+        } else if (m.paid) {
+            badge.className = 'badge badge-paid';
+            badge.textContent = '✅ 済';
+        } else {
+            badge.className = 'badge badge-unpaid';
+            badge.textContent = '⏳ 未払い';
+        }
+        actionsDiv.appendChild(badge);
+
+        if (isAdmin) {
+            // 幹事モード時: 削除ボタン
+            var delBtn = document.createElement('button');
+            delBtn.className = 'btn-danger-sm';
+            delBtn.textContent = '🗑';
+            delBtn.title = m.name + 'を削除';
+            (function(memberName) {
+                delBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    removeMember(memberName);
+                });
+            })(m.name);
+            actionsDiv.appendChild(delBtn);
+        } else if (!m.paid && myName && (m.name === myName || m.addedBy === myName)) {
+            // 通常モード: 自分または自分が追加した人のみ自己申告ボタンを表示
+            var reportBtn = document.createElement('button');
+            reportBtn.className = 'btn-sm btn-orange';
+            reportBtn.textContent = '💸 申告';
+            reportBtn.style.marginLeft = '4px';
+            (function(memberName, memberAmount) {
+                reportBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!confirm(memberName + 'さんの ¥' + (memberAmount || 0).toLocaleString() + ' を送金済みにしますか？')) return;
+                    selfReport(memberName);
+                });
+            })(m.name, m.amount);
+            actionsDiv.appendChild(reportBtn);
+        }
+
+        div.appendChild(check); div.appendChild(info); div.appendChild(actionsDiv);
+
+        if (isAdmin) {
+            (function(name) {
+                div.addEventListener('click', function() { confirmPaid(name); });
+            })(m.name);
+        }
+        return div;
+    }
+
+    // ===== 支払い状態切り替え（幹事用） =====
+    function togglePaid(name) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/toggle/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() { loadEvent(); };
+        xhr.send(JSON.stringify({ name: name }));
+    }
+
+    // ===== 自己申告 =====
+    function selfReport(name) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/self-report/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() { loadEvent(); };
+        xhr.send(JSON.stringify({ name: name }));
+    }
+
+    // ===== 幹事確認 =====
+    function confirmPaid(name) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/confirm/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 403) {
+                alert('❗ 幹事権限がありません');
+                isAdmin = false;
+                document.getElementById('adminToggle').textContent = '🔐 幹事モード';
+                document.getElementById('adminBanner').classList.add('hidden');
+                renderEvent();
+                return;
+            }
+            loadEvent();
+        };
+        xhr.send(JSON.stringify({ name: name, adminToken: adminToken }));
+    }
+
+    // ===== 参加者削除（幹事用） =====
+    function removeMember(name) {
+        if (!confirm('「' + name + '」を参加者リストから削除しますか？\nこの操作は取り消せません。')) return;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/remove/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 403) {
+                alert('❗ 幹事権限がありません');
+                isAdmin = false;
+                document.getElementById('adminToggle').textContent = '🔐 幹事モード';
+                document.getElementById('adminBanner').classList.add('hidden');
+                renderEvent();
+                return;
+            }
+            if (xhr.status === 200) {
+                // 自分自身を削除した場合のクリーンアップ
+                if (name === myName) {
+                    myName = '';
+                    try { localStorage.removeItem('collect_name_' + eventId); } catch(e) {}
+                }
+            }
+            loadEvent();
+        };
+        xhr.onerror = function() { alert('通信エラー'); };
+        xhr.send(JSON.stringify({ name: name, adminToken: adminToken }));
+    }
+
+    // 自動更新（10秒ごと）
+    setInterval(function() { if (eventId) loadEvent(); }, 10000);
+
+    init();
+})();
+</script>
+</body>
+</html>

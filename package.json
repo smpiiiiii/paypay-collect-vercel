@@ -1,0 +1,12 @@
+{
+  "name": "paypay-collect",
+  "version": "1.0.0",
+  "description": "PayPay集金チェッカー - LINEで共有できる集金管理ツール",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3"
+  }
+}
