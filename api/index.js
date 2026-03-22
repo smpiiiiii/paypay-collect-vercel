@@ -68,7 +68,12 @@ module.exports = async (req, res) => {
       const tiers = Array.isArray(body.priceTiers) && body.priceTiers.length > 0
         ? body.priceTiers.filter(t => t.label).map(t => ({ label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '' }))
         : [{ label: '一般', amount: body.amount || 0, paypayLink: '' }];
-      const event = { id, name: body.name || '集金', adminToken, priceTiers: tiers, members: [], created: new Date().toISOString() };
+      const event = {
+        id, name: body.name || '集金', adminToken, priceTiers: tiers, members: [],
+        memo: (body.memo || '').trim(),
+        theme: body.theme || 'red',
+        created: new Date().toISOString()
+      };
       await saveEvent(id, event);
       return res.status(200).json({ id, adminToken });
     }

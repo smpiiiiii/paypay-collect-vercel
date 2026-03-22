@@ -6,6 +6,10 @@
     <title>集金チェッカー</title>
     <meta name="description" content="LINEで共有できる集金管理ツール。飲み会やイベントの集金状況をみんなで確認できます。">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ff0033">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box }
@@ -72,6 +76,35 @@
         .share-btns .btn { flex: 1; font-size: 12px; padding: 10px }
         .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
         .hidden { display: none }
+
+        /* テーマカラーバリエーション */
+        .theme-red .header { background: linear-gradient(135deg, #ff0033, #e60028) }
+        .theme-blue .header { background: linear-gradient(135deg, #1565c0, #0d47a1) }
+        .theme-green .header { background: linear-gradient(135deg, #2e7d32, #1b5e20) }
+        .theme-purple .header { background: linear-gradient(135deg, #7b1fa2, #4a148c) }
+        .theme-orange .header { background: linear-gradient(135deg, #e65100, #bf360c) }
+        .theme-pink .header { background: linear-gradient(135deg, #c2185b, #880e4f) }
+
+        /* テーマ選択ボタン */
+        .theme-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px }
+        .theme-dot { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: transform .2s }
+        .theme-dot:hover { transform: scale(1.15) }
+        .theme-dot.active { border-color: #333; transform: scale(1.15) }
+
+        /* 割り勘計算 */
+        .calc-box { background: #f0f4ff; border: 1px solid #c5cfe8; border-radius: 10px; padding: 12px; margin-bottom: 8px }
+        .calc-box .calc-result { font-size: 18px; font-weight: 900; color: #1565c0; text-align: center; margin-top: 6px }
+
+        /* メモ表示 */
+        .memo-display { background: #fffde7; border: 1px solid #fff9c4; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #f57f17; margin-bottom: 8px; line-height: 1.5 }
+
+        /* 履歴カード */
+        .history-card { background: #fff; border-radius: 12px; padding: 10px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.04); text-decoration: none; color: #333; border: 1px solid #eee }
+        .history-card:active { background: #f5f5f5 }
+        .history-card .h-icon { font-size: 20px; flex-shrink: 0 }
+        .history-card .h-info { flex: 1; min-width: 0 }
+        .history-card .h-name { font-size: 13px; font-weight: 700 }
+        .history-card .h-meta { font-size: 10px; color: #999 }
 
         /* ローディング画面 */
         .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center }
@@ -147,12 +180,45 @@
                 <label>イベント名</label>
                 <input type="text" id="cName" placeholder="例: 3月飲み会🍻">
             </div>
+            <div style="margin-bottom:8px">
+                <label>📝 メモ（任意）</label>
+                <input type="text" id="cMemo" placeholder="例: 2次会費込み、23時集合">
+            </div>
+            <div style="margin-bottom:8px">
+                <label>🎨 テーマカラー</label>
+                <div class="theme-picker" id="themePicker">
+                    <div class="theme-dot active" data-theme="red" style="background:linear-gradient(135deg,#ff0033,#e60028)"></div>
+                    <div class="theme-dot" data-theme="blue" style="background:linear-gradient(135deg,#1565c0,#0d47a1)"></div>
+                    <div class="theme-dot" data-theme="green" style="background:linear-gradient(135deg,#2e7d32,#1b5e20)"></div>
+                    <div class="theme-dot" data-theme="purple" style="background:linear-gradient(135deg,#7b1fa2,#4a148c)"></div>
+                    <div class="theme-dot" data-theme="orange" style="background:linear-gradient(135deg,#e65100,#bf360c)"></div>
+                    <div class="theme-dot" data-theme="pink" style="background:linear-gradient(135deg,#c2185b,#880e4f)"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:8px">
+                <label>🧮 割り勘計算（参考用）</label>
+                <div class="calc-box">
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <input type="number" id="calcTotal" placeholder="合計金額" inputmode="numeric" style="flex:1">
+                        <span style="font-size:13px">÷</span>
+                        <input type="number" id="calcPeople" placeholder="人数" inputmode="numeric" style="flex:1">
+                        <button class="btn btn-sm btn-orange" id="calcBtn" type="button">計算</button>
+                    </div>
+                    <div class="calc-result" id="calcResult"></div>
+                </div>
+            </div>
             <div>
                 <label>💴 料金区分（区分ごとにPayPayリンクを設定可）</label>
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
             <button class="btn btn-red" id="createBtn">✅ 作成する</button>
+        </div>
+
+        <!-- 集金履歴 -->
+        <div id="historySection" class="card hidden">
+            <h3>📊 最近の集金</h3>
+            <div id="historyList"></div>
         </div>
     </div>
 
@@ -362,6 +428,72 @@
     addTierRow('男子', '', ''); addTierRow('女子', '', '');
     document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
 
+    // ===== テーマカラー選択 =====
+    var selectedTheme = 'red';
+    var themePicker = document.getElementById('themePicker');
+    themePicker.addEventListener('click', function(e) {
+        var dot = e.target.closest('.theme-dot');
+        if (!dot) return;
+        var dots = themePicker.querySelectorAll('.theme-dot');
+        for (var d = 0; d < dots.length; d++) dots[d].classList.remove('active');
+        dot.classList.add('active');
+        selectedTheme = dot.getAttribute('data-theme');
+    });
+
+    // ===== 割り勘計算 =====
+    document.getElementById('calcBtn').addEventListener('click', function() {
+        var total = parseInt(document.getElementById('calcTotal').value) || 0;
+        var people = parseInt(document.getElementById('calcPeople').value) || 0;
+        var resultEl = document.getElementById('calcResult');
+        if (total > 0 && people > 0) {
+            var perPerson = Math.ceil(total / people);
+            resultEl.textContent = '→ 1人 ¥' + perPerson.toLocaleString();
+        } else {
+            resultEl.textContent = '金額と人数を入力してください';
+        }
+    });
+
+    // ===== 集金履歴 =====
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem('collect_history') || '[]'); } catch(e) { return []; }
+    }
+    function addToHistory(id, name) {
+        var history = getHistory();
+        // 重複防止
+        history = history.filter(function(h) { return h.id !== id; });
+        history.unshift({ id: id, name: name, date: new Date().toISOString() });
+        // 最大20件
+        if (history.length > 20) history = history.slice(0, 20);
+        try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
+    }
+    function renderHistory() {
+        var history = getHistory();
+        var section = document.getElementById('historySection');
+        var list = document.getElementById('historyList');
+        if (history.length === 0) { section.classList.add('hidden'); return; }
+        section.classList.remove('hidden');
+        while (list.firstChild) list.removeChild(list.firstChild);
+        for (var i = 0; i < history.length; i++) {
+            var h = history[i];
+            var a = document.createElement('a');
+            a.className = 'history-card';
+            a.href = '/collect/' + h.id;
+            var icon = document.createElement('span');
+            icon.className = 'h-icon'; icon.textContent = '💰';
+            var info = document.createElement('div');
+            info.className = 'h-info';
+            var nameEl = document.createElement('div');
+            nameEl.className = 'h-name'; nameEl.textContent = h.name;
+            var meta = document.createElement('div');
+            meta.className = 'h-meta';
+            var d = new Date(h.date);
+            meta.textContent = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + ('0'+d.getMinutes()).slice(-2);
+            info.appendChild(nameEl); info.appendChild(meta);
+            a.appendChild(icon); a.appendChild(info);
+            list.appendChild(a);
+        }
+    }
+
     // ===== 初期化 =====
     function init() {
         var parts = location.pathname.split('/');
@@ -393,6 +525,8 @@
         }
         // LIFF初期化
         initLiff();
+        // 履歴表示
+        renderHistory();
     }
 
 
@@ -441,6 +575,7 @@
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
+        var memo = (document.getElementById('cMemo').value || '').trim();
         var xhr = new XMLHttpRequest();
         xhr.open('POST', API + '/api/create', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
@@ -451,11 +586,13 @@
                 if (data.adminToken) {
                     try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
                 }
+                // 履歴に追加
+                addToHistory(data.id, name);
                 location.href = '/collect/' + data.id;
             } else { alert('作成に失敗: ' + xhr.status); }
         };
         xhr.onerror = function() { alert('通信エラーが発生しました'); };
-        xhr.send(JSON.stringify({ name: name, priceTiers: tiers }));
+        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo, theme: selectedTheme }));
     });
 
     // ===== 参加登録 =====
@@ -606,6 +743,8 @@
                     alert('データの読み込みに失敗しました');
                     return;
                 }
+                // 履歴に追加
+                if (eventData && eventData.name) addToHistory(eventId, eventData.name);
                 renderEvent();
             }
             else { location.href = '/'; }
@@ -624,6 +763,21 @@
         createView.classList.add('hidden');
         eventView.classList.remove('hidden');
         statsBar.classList.remove('hidden');
+
+        // テーマカラー適用
+        var theme = eventData.theme || 'red';
+        document.body.className = 'theme-' + theme;
+
+        // メモ表示
+        var existingMemo = document.getElementById('memoDisplay');
+        if (existingMemo) existingMemo.remove();
+        if (eventData.memo) {
+            var memoDiv = document.createElement('div');
+            memoDiv.id = 'memoDisplay';
+            memoDiv.className = 'memo-display';
+            memoDiv.textContent = '📝 ' + eventData.memo;
+            eventView.insertBefore(memoDiv, eventView.firstChild);
+        }
 
         // 幹事モードリンクの表示制御（トークンがない場合は非表示）
         document.getElementById('adminToggle').style.display = adminToken ? '' : 'none';
