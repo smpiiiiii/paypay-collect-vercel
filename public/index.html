@@ -98,6 +98,7 @@
 
         /* 幹事モードバナー */
         .admin-banner { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #e65100; padding: 8px 12px; border-radius: 10px; font-size: 11px; font-weight: 700; text-align: center; margin-bottom: 8px; border: 1px solid #ffcc80 }
+        .btn-remind { background: linear-gradient(135deg, #ff6b00, #ff8c00); display: flex; align-items: center; justify-content: center; gap: 6px }
 
         /* 幹事金額変更フォーム */
         .edit-tiers-card { background: linear-gradient(135deg, #fff8e1, #ffecb3); border: 2px solid #ffc107; border-radius: 14px; padding: 16px; margin-bottom: 10px }
@@ -171,6 +172,14 @@
             <button class="btn btn-red" id="saveTiersBtn" style="margin-top:4px">✅ 金額を更新</button>
         </div>
 
+        <!-- 未払い催促ボタン（幹事モード時に表示） -->
+        <div id="remindCard" class="card hidden" style="background:linear-gradient(135deg,#fff3e0,#ffe8cc);border:1px solid #ffcc80">
+            <h3 style="color:#e65100">📣 未払い催促</h3>
+            <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.5">未払いの参加者リストをLINEグループに共有して催促できます。</div>
+            <div id="unpaidPreview" style="font-size:12px;color:#333;margin-bottom:8px;background:#fff;padding:10px;border-radius:8px;line-height:1.6"></div>
+            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促する</button>
+        </div>
+
 
         <!-- 仕組み説明カード -->
         <div class="card" style="background:linear-gradient(135deg,#f0f4ff,#e8eeff);border:1px solid #c5cfe8;padding:14px 16px">
@@ -216,6 +225,10 @@
         <div class="share-btns">
             <button class="btn btn-outline" id="refreshBtn">🔄 更新</button>
             <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
+        </div>
+        <!-- 未払いがいる場合のみ表示される簡易催促ボタン（幹事でなくても使える） -->
+        <div id="remindBtnSimple" class="hidden" style="margin-top:6px">
+            <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
@@ -495,6 +508,60 @@
         location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
     });
 
+    // ===== 未払い催促機能 =====
+    function buildRemindMessage() {
+        var members = eventData ? (eventData.members || []) : [];
+        var unpaid = members.filter(function(m) { return !m.paid; });
+        if (unpaid.length === 0) return null;
+
+        var refName = myName ? encodeURIComponent(myName) : '';
+        var url = 'https://liff.line.me/' + LIFF_ID + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var eventName = eventData ? (eventData.name || '集金') : '集金';
+        var totalPaid = members.filter(function(m) { return m.paid; }).length;
+
+        var lines = [
+            '📣 【支払いリマインダー】',
+            '',
+            '💰 ' + eventName,
+            '✅ ' + totalPaid + '/' + members.length + '人 支払い済',
+            '',
+            '⏳ まだの方 (' + unpaid.length + '人):',
+        ];
+
+        for (var i = 0; i < unpaid.length; i++) {
+            var amount = unpaid[i].amount > 0 ? ' ¥' + unpaid[i].amount.toLocaleString() : '';
+            lines.push('  ・' + unpaid[i].name + 'さん' + amount);
+        }
+
+        // PayPayリンクがあれば追加
+        var tiers = getTiers();
+        var hasPaypay = tiers.some(function(t) { return t.paypayLink; });
+        if (hasPaypay) {
+            lines.push('');
+            lines.push('💱 PayPay送金は下のリンクから⬇️');
+        }
+
+        lines.push('');
+        lines.push('👇 支払い報告はこちら');
+        lines.push(url);
+
+        return lines.join('\n');
+    }
+
+    // 幹事用催促ボタン
+    document.getElementById('remindBtn').addEventListener('click', function() {
+        var text = buildRemindMessage();
+        if (!text) { alert('未払いの参加者はいません🎉'); return; }
+        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+    });
+
+    // 全員向け催促ボタン
+    document.getElementById('remindBtnAll').addEventListener('click', function() {
+        var text = buildRemindMessage();
+        if (!text) { alert('未払いの参加者はいません🎉'); return; }
+        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+    });
+
     // ===== 幹事モード =====
     document.getElementById('adminToggle').addEventListener('click', function() {
         if (!adminToken) {
@@ -601,6 +668,25 @@
             }
         }
 
+        // 未払い催促カードの表示制御
+        var remindCard = document.getElementById('remindCard');
+        var unpaidPreview = document.getElementById('unpaidPreview');
+        var membersAll = eventData.members || [];
+        var unpaidMembers = membersAll.filter(function(m) { return !m.paid; });
+        // 幹事モードかつ未払いがいる場合に表示
+        if (isAdmin && unpaidMembers.length > 0) {
+            remindCard.classList.remove('hidden');
+            var previewLines = unpaidMembers.map(function(m) {
+                return '⏳ ' + m.name + '（' + (m.tier || '一般') + ' ¥' + (m.amount || 0).toLocaleString() + '）';
+            });
+            unpaidPreview.textContent = previewLines.join('\n');
+            unpaidPreview.style.whiteSpace = 'pre-line';
+        } else {
+            remindCard.classList.add('hidden');
+        }
+        // 簡易催促ボタン（全員向け）の表示制御
+        var remindBtnSimple = document.getElementById('remindBtnSimple');
+        remindBtnSimple.classList.toggle('hidden', unpaidMembers.length === 0);
 
 
         document.getElementById('headerTitle').textContent = '💰 ' + (eventData.name || '集金');
