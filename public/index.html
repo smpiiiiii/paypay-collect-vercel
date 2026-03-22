@@ -1047,8 +1047,9 @@
         }
         actionsDiv.appendChild(badge);
 
-        if (isAdmin) {
-            // 幹事モード時: 削除ボタン
+        // 削除ボタン表示条件: 幹事 OR 自分自身 OR 自分が招待した人
+        var canDelete = isAdmin || (myName && (m.name === myName || m.addedBy === myName));
+        if (canDelete) {
             var delBtn = document.createElement('button');
             delBtn.className = 'btn-danger-sm';
             delBtn.textContent = '🗑';
@@ -1060,8 +1061,9 @@
                 });
             })(m.name);
             actionsDiv.appendChild(delBtn);
-        } else if (!m.paid && myName && (m.name === myName || m.addedBy === myName)) {
-            // 通常モード: 自分または自分が追加した人のみ自己申告ボタンを表示
+        }
+        // 自己申告ボタン: 未払いかつ（自分 OR 自分が追加した人）
+        if (!m.paid && myName && (m.name === myName || m.addedBy === myName)) {
             var reportBtn = document.createElement('button');
             reportBtn.className = 'btn-sm btn-orange';
             reportBtn.textContent = '💸 申告';
@@ -1148,7 +1150,7 @@
             loadEvent();
         };
         xhr.onerror = function() { alert('通信エラー'); };
-        xhr.send(JSON.stringify({ name: name, adminToken: adminToken }));
+        xhr.send(JSON.stringify({ name: name, adminToken: adminToken, requesterName: myName }));
     }
 
     // 自動更新（10秒ごと）

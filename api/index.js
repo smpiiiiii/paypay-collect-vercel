@@ -161,20 +161,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({ status: 'ok' });
     }
 
-    // API: 参加者削除
+    // API: 参加者削除（幹事、本人、招待者が削除可能）
     if (pathname.match(/^\/api\/remove\//) && req.method === 'POST') {
       const id = pathname.split('/')[3];
       const body = await parseBody(req);
       let event = await getEvent(id);
       if (!event) return res.status(404).json({ error: 'Not found' });
       if (typeof event === 'string') event = JSON.parse(event);
-      if (!body.adminToken || !event.adminToken || body.adminToken !== event.adminToken) {
-        return res.status(403).json({ status: 'forbidden', message: '幹事権限がありません' });
-      }
       const memberName = (body.name || '').trim();
       if (!memberName) return res.status(400).json({ status: 'error', message: '名前が必要です' });
       const idx = event.members.findIndex(m => m.name === memberName);
       if (idx === -1) return res.status(404).json({ status: 'not_found', message: 'メンバーが見つかりません' });
+      const member = event.members[idx];
+      const requesterName = (body.requesterName || '').trim();
+      const isAdminReq = body.adminToken && event.adminToken && body.adminToken === event.adminToken;
+      const isSelf = requesterName && requesterName === memberName;
+      const isInviter = requesterName && member.addedBy === requesterName;
+      if (!isAdminReq && !isSelf && !isInviter) {
+        return res.status(403).json({ status: 'forbidden', message: '削除権限がありません' });
+      }
       event.members.splice(idx, 1);
       await saveEvent(id, event);
       return res.status(200).json({ status: 'ok', removed: memberName });
