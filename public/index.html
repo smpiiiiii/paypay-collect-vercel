@@ -256,16 +256,18 @@
         <!-- メンバーリスト -->
         <div id="memberList"></div>
 
-        <!-- 割り勘計算（イベントページ） -->
+        <!-- 割り勘スライダー -->
         <div class="card" style="background:linear-gradient(135deg,#f0f4ff,#e8eeff);border:1px solid #c5cfe8">
-            <h3 style="font-size:13px;color:#1a237e;margin-bottom:8px">🧮 割り勘計算</h3>
-            <div style="display:flex;gap:6px;align-items:center">
-                <input type="number" id="calcTotal" placeholder="合計金額" inputmode="numeric" style="flex:1">
-                <span style="font-size:13px">÷</span>
-                <input type="number" id="calcPeople" placeholder="人数" inputmode="numeric" style="flex:1">
-                <button class="btn btn-sm btn-orange" id="calcBtn" type="button">計算</button>
+            <h3 style="font-size:13px;color:#1a237e;margin-bottom:10px">🧮 割り勘スライダー</h3>
+            <div style="font-size:11px;color:#666;margin-bottom:8px;line-height:1.5">💡 合計金額を入力して、スライダーで各区分の1人あたり金額を調整できます。</div>
+            <div class="split-total-input" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <span style="font-size:14px;color:#666">合計</span>
+                <input type="number" id="splitTotal" placeholder="0" inputmode="numeric" style="flex:1;font-size:18px;font-weight:900;text-align:right;padding:10px 14px">
+                <span style="font-size:14px;color:#666">円</span>
             </div>
-            <div class="calc-result" id="calcResult"></div>
+            <div id="splitSliders"></div>
+            <div id="splitSummary"></div>
+            <button class="btn btn-red" id="splitApplyBtn" style="margin-top:8px;display:none">✅ この金額で確定する</button>
         </div>
 
         <div class="share-btns">
@@ -842,6 +844,11 @@
         // 自分のアクションカード
         renderMyActions();
 
+        // 割り勘スライダー初期化
+        if (typeof window.initSplitSliders === 'function') {
+            window.initSplitSliders(eventData, getTiers);
+        }
+
         // メンバーリスト
         clearChildren(memberList);
         if (members.length === 0) {
@@ -1162,5 +1169,6 @@
     init();
 })();
 </script>
+<script src="/split-slider.js"></script>
 </body>
 </html>
