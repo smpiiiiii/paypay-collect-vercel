@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#ff0033">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- LINE LIFF SDK 削除済み — 名前手入力方式に変更 -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box }
         body { font-family: 'Noto Sans JP', sans-serif; background: #f5f5f5; min-height: 100vh }
@@ -132,9 +132,8 @@
         .edit-tier-row .tier-label { font-size: 13px; font-weight: 700; flex: 1; min-width: 0 }
         .edit-tier-row input { width: 100px; text-align: right; flex: 0 0 auto }
 
-        /* LINE名自動入力インジケーター */
-        .line-info { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #2e7d32; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px }
-        .line-info img { width: 24px; height: 24px; border-radius: 50% }
+        /* LINE名インジケーター（無効化済み） */
+        .line-info { display: none }
 
         @media (max-width: 360px) {
             .stats { gap: 6px; font-size: 11px }
@@ -220,7 +219,7 @@
         <div class="card" style="background:linear-gradient(135deg,#f0f4ff,#e8eeff);border:1px solid #c5cfe8;padding:14px 16px">
             <div style="font-size:13px;font-weight:700;color:#1a237e;margin-bottom:8px">📌 使い方</div>
             <div style="font-size:12px;color:#333;line-height:1.7">
-                <div style="margin-bottom:4px">1️⃣ 下のフォームから<b>参加登録</b>（LINE名が自動入力されます）</div>
+                <div style="margin-bottom:4px">1️⃣ 下のフォームから<b>名前を入力して参加登録</b></div>
                 <div style="margin-bottom:4px">2️⃣ PayPayで送金したら<b>「💸 送金しました」</b>をタップ</div>
                 <div style="margin-bottom:4px">3️⃣ 幹事が確認したら <b>✅ 確認済み</b> になります</div>
                 <div style="margin-top:6px;color:#e65100">📣 参加する友達にもこのリンクを共有してね！</div>
@@ -300,46 +299,9 @@
     var isAdmin = false;
     var myName = '';
     var adminToken = '';
-    var liffProfile = null; // LINE LIFFプロフィール
-    var LIFF_ID = '2009555688-Md2LIQl6';
-
-    // ===== LIFF初期化 =====
+    // LINE LIFF認証は削除済み — 名前手入力方式
     function initLiff() {
-        if (typeof liff === 'undefined') return;
-        liff.init({ liffId: LIFF_ID }).then(function() {
-            if (liff.isLoggedIn()) {
-                liff.getProfile().then(function(profile) {
-                    liffProfile = profile;
-                    var nameInput = document.getElementById('joinName');
-                    var lineInfoDiv = document.getElementById('lineInfo');
-                    // 名前が空の場合のみ自動入力
-                    if (nameInput && !nameInput.value) {
-                        nameInput.value = profile.displayName;
-                    }
-                    // LINE情報インジケーター表示
-                    if (lineInfoDiv) {
-                        lineInfoDiv.classList.remove('hidden');
-                        lineInfoDiv.innerHTML = '';
-                        if (profile.pictureUrl) {
-                            var img = document.createElement('img');
-                            img.src = profile.pictureUrl;
-                            lineInfoDiv.appendChild(img);
-                        }
-                        lineInfoDiv.appendChild(document.createTextNode('LINEアカウント: ' + profile.displayName));
-                    }
-                });
-            } else {
-                // LINEアプリ内でなければログインを促す（任意）
-                // 外部ブラウザの場合はLIFFログインにリダイレクト
-                if (!liff.isInClient()) {
-                    // 外部ブラウザではログインしない（手入力を許可）
-                } else {
-                    liff.login();
-                }
-            }
-        }).catch(function(err) {
-            console.log('LIFF init error:', err);
-        });
+        // 何もしない（LIFF認証は廃止）
     }
 
     // DOM要素取得
@@ -599,7 +561,7 @@
     document.getElementById('refreshBtn').addEventListener('click', function() { loadEvent(); });
     document.getElementById('shareBtn').addEventListener('click', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
-        var url = 'https://liff.line.me/' + LIFF_ID + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
         var tiers = getTiers();
         var members = eventData ? (eventData.members || []) : [];
         var paid = 0;
@@ -612,7 +574,12 @@
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '💰 ' + eventName + '\n✅ ' + paid + '/' + members.length + '人 支払い済\n' + tierInfo + '\n\n👇 参加・支払い報告はこちら\n' + url;
-        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+        // LINE共有が使える場合はLINE、それ以外はクリップボードにコピー
+        if (navigator.share) {
+            navigator.share({ title: eventName, text: text }).catch(function() {});
+        } else {
+            navigator.clipboard.writeText(text).then(function() { alert('📋 共有テキストをコピーしました！LINEに貼り付けて送ってね'); });
+        }
     });
 
     // ===== 未払い催促機能 =====
@@ -622,7 +589,7 @@
         if (unpaid.length === 0) return null;
 
         var refName = myName ? encodeURIComponent(myName) : '';
-        var url = 'https://liff.line.me/' + LIFF_ID + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var totalPaid = members.filter(function(m) { return m.paid; }).length;
 
@@ -659,14 +626,22 @@
     document.getElementById('remindBtn').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+        if (navigator.share) {
+            navigator.share({ title: '支払いリマインダー', text: text }).catch(function() {});
+        } else {
+            navigator.clipboard.writeText(text).then(function() { alert('📋 催促テキストをコピーしました！'); });
+        }
     });
 
     // 全員向け催促ボタン
     document.getElementById('remindBtnAll').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+        if (navigator.share) {
+            navigator.share({ title: '支払いリマインダー', text: text }).catch(function() {});
+        } else {
+            navigator.clipboard.writeText(text).then(function() { alert('📋 催促テキストをコピーしました！'); });
+        }
     });
 
     // ===== 幹事モード =====
@@ -965,13 +940,7 @@
                 payBtn.textContent = '💱 PayPayで ¥' + (me.amount || 0).toLocaleString() + ' 送金する';
                 payBtn.addEventListener('click', function() {
                     // PayPay送金画面を開く
-                    if (typeof liff !== 'undefined' && liff.isInClient && liff.isInClient()) {
-                        // LIFFアプリ内: 外部ブラウザで開く
-                        liff.openWindow({ url: tierPaypayLink, external: true });
-                    } else {
-                        // 通常ブラウザ: 新しいタブで開く
-                        window.open(tierPaypayLink, '_blank');
-                    }
+                    window.open(tierPaypayLink, '_blank');
                     // 画面に戻った時に自動リロード + 送金確認
                     var returnHandler = function() {
                         if (document.visibilityState === 'visible') {
