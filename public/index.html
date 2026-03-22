@@ -374,18 +374,6 @@
     document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
 
 
-    // ===== 割り勘計算 =====
-    document.getElementById('calcBtn').addEventListener('click', function() {
-        var total = parseInt(document.getElementById('calcTotal').value) || 0;
-        var people = parseInt(document.getElementById('calcPeople').value) || 0;
-        var resultEl = document.getElementById('calcResult');
-        if (total > 0 && people > 0) {
-            var perPerson = Math.ceil(total / people);
-            resultEl.textContent = '→ 1人 ¥' + perPerson.toLocaleString();
-        } else {
-            resultEl.textContent = '金額と人数を入力してください';
-        }
-    });
 
     // ===== 集金履歴 =====
     function getHistory() {
