@@ -77,14 +77,6 @@
         .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
         .hidden { display: none }
 
-        /* テーマカラーバリエーション */
-        .theme-red .header { background: linear-gradient(135deg, #ff0033, #e60028) }
-        .theme-blue .header { background: linear-gradient(135deg, #1565c0, #0d47a1) }
-        .theme-green .header { background: linear-gradient(135deg, #2e7d32, #1b5e20) }
-        .theme-purple .header { background: linear-gradient(135deg, #7b1fa2, #4a148c) }
-        .theme-orange .header { background: linear-gradient(135deg, #e65100, #bf360c) }
-        .theme-pink .header { background: linear-gradient(135deg, #c2185b, #880e4f) }
-
         /* テーマ選択ボタン */
         .theme-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px }
         .theme-dot { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: transform .2s }
@@ -183,17 +175,6 @@
             <div style="margin-bottom:8px">
                 <label>📝 メモ（任意）</label>
                 <input type="text" id="cMemo" placeholder="例: 2次会費込み、23時集合">
-            </div>
-            <div style="margin-bottom:8px">
-                <label>🎨 テーマカラー</label>
-                <div class="theme-picker" id="themePicker">
-                    <div class="theme-dot active" data-theme="red" style="background:linear-gradient(135deg,#ff0033,#e60028)"></div>
-                    <div class="theme-dot" data-theme="blue" style="background:linear-gradient(135deg,#1565c0,#0d47a1)"></div>
-                    <div class="theme-dot" data-theme="green" style="background:linear-gradient(135deg,#2e7d32,#1b5e20)"></div>
-                    <div class="theme-dot" data-theme="purple" style="background:linear-gradient(135deg,#7b1fa2,#4a148c)"></div>
-                    <div class="theme-dot" data-theme="orange" style="background:linear-gradient(135deg,#e65100,#bf360c)"></div>
-                    <div class="theme-dot" data-theme="pink" style="background:linear-gradient(135deg,#c2185b,#880e4f)"></div>
-                </div>
             </div>
             <div>
                 <label>💴 料金区分（区分ごとにPayPayリンクを設定可）</label>
@@ -428,17 +409,6 @@
     addTierRow('男子', '', ''); addTierRow('女子', '', '');
     document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
 
-    // ===== テーマカラー選択 =====
-    var selectedTheme = 'red';
-    var themePicker = document.getElementById('themePicker');
-    themePicker.addEventListener('click', function(e) {
-        var dot = e.target.closest('.theme-dot');
-        if (!dot) return;
-        var dots = themePicker.querySelectorAll('.theme-dot');
-        for (var d = 0; d < dots.length; d++) dots[d].classList.remove('active');
-        dot.classList.add('active');
-        selectedTheme = dot.getAttribute('data-theme');
-    });
 
     // ===== 割り勘計算 =====
     document.getElementById('calcBtn').addEventListener('click', function() {
@@ -592,7 +562,7 @@
             } else { alert('作成に失敗: ' + xhr.status); }
         };
         xhr.onerror = function() { alert('通信エラーが発生しました'); };
-        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo, theme: selectedTheme }));
+        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo }));
     });
 
     // ===== 参加登録 =====
@@ -763,10 +733,6 @@
         createView.classList.add('hidden');
         eventView.classList.remove('hidden');
         statsBar.classList.remove('hidden');
-
-        // テーマカラー適用
-        var theme = eventData.theme || 'red';
-        document.body.className = 'theme-' + theme;
 
         // メモ表示
         var existingMemo = document.getElementById('memoDisplay');
