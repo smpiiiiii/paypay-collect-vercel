@@ -563,7 +563,7 @@
             tierInfo = '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
-        var text = '💰 ' + eventName + '\n✅ ' + paid + '/' + members.length + '人 支払い済\n' + tierInfo + '\n\n👇 参加・支払い報告はこちら\n' + url;
+        var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
         // LINE共有が使える場合はLINE、それ以外はクリップボードにコピー
         if (navigator.share) {
             navigator.share({ title: eventName, text: text }).catch(function() {});
