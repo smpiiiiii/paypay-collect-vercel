@@ -185,6 +185,34 @@ module.exports = async (req, res) => {
       return res.status(200).json({ status: 'ok', removed: memberName });
     }
 
+    // API: メンバー区分変更（幹事、本人、招待者が変更可能）
+    if (pathname.match(/^\/api\/change-tier\//) && req.method === 'POST') {
+      const id = pathname.split('/')[3];
+      const body = await parseBody(req);
+      let event = await getEvent(id);
+      if (!event) return res.status(404).json({ error: 'Not found' });
+      if (typeof event === 'string') event = JSON.parse(event);
+      event = migrateEvent(event);
+      const memberName = (body.name || '').trim();
+      const newTier = (body.newTier || '').trim();
+      if (!memberName || !newTier) return res.status(400).json({ status: 'error', message: '名前と区分が必要です' });
+      const member = event.members.find(m => m.name === memberName);
+      if (!member) return res.status(404).json({ status: 'not_found', message: 'メンバーが見つかりません' });
+      const requesterName = (body.requesterName || '').trim();
+      const isAdminReq = body.adminToken && event.adminToken && body.adminToken === event.adminToken;
+      const isSelf = requesterName && requesterName === memberName;
+      const isInviter = requesterName && member.addedBy === requesterName;
+      if (!isAdminReq && !isSelf && !isInviter) {
+        return res.status(403).json({ status: 'forbidden', message: '変更権限がありません' });
+      }
+      const tierInfo = event.priceTiers.find(t => t.label === newTier);
+      if (!tierInfo) return res.status(400).json({ status: 'error', message: '無効な区分です' });
+      member.tier = newTier;
+      member.amount = tierInfo.amount;
+      await saveEvent(id, event);
+      return res.status(200).json({ status: 'ok', name: memberName, tier: newTier, amount: tierInfo.amount });
+    }
+
     // API: 料金変更
     if (pathname.match(/^\/api\/update-tiers\//) && req.method === 'POST') {
       const id = pathname.split('/')[3];

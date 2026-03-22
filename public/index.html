@@ -843,6 +843,14 @@
             memberList.appendChild(makeText('div', 'まだ参加者がいません🙈', 'msg'));
             return;
         }
+
+        // 操作説明
+        if (myName) {
+            var helpDiv = document.createElement('div');
+            helpDiv.style.cssText = 'font-size:11px;color:#999;padding:4px 8px;margin-bottom:6px;line-height:1.5';
+            helpDiv.innerHTML = '💡 <b>自分</b>と<b>自分が招待した人</b>は区分変更・削除ができます' + (isAdmin ? '<br>👑 幹事は全員の操作が可能です' : '');
+            memberList.appendChild(helpDiv);
+        }
         // 未払い→支払い済の順にソート
         var sorted = members.slice().sort(function(a, b) {
             if (a.paid === b.paid) return 0;
@@ -1062,6 +1070,22 @@
             })(m.name);
             actionsDiv.appendChild(delBtn);
         }
+        // 区分変更ボタン: 区分が2つ以上ある場合、権限のある人に表示
+        var tiersForChange = getTiers();
+        if (tiersForChange.length >= 2 && canDelete) {
+            var changeBtn = document.createElement('button');
+            changeBtn.className = 'btn-sm';
+            changeBtn.textContent = '🔄';
+            changeBtn.title = m.name + 'の区分を変更';
+            changeBtn.style.cssText = 'margin-left:4px;background:#5c6bc0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
+            (function(memberName, currentTier) {
+                changeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    changeTier(memberName, currentTier);
+                });
+            })(m.name, m.tier);
+            actionsDiv.appendChild(changeBtn);
+        }
         // 自己申告ボタン: 未払いかつ（自分 OR 自分が追加した人）
         if (!m.paid && myName && (m.name === myName || m.addedBy === myName)) {
             var reportBtn = document.createElement('button');
@@ -1151,6 +1175,31 @@
         };
         xhr.onerror = function() { alert('通信エラー'); };
         xhr.send(JSON.stringify({ name: name, adminToken: adminToken, requesterName: myName }));
+    }
+
+    // ===== 区分変更 =====
+    function changeTier(name, currentTier) {
+        var tiers = getTiers();
+        var options = tiers.filter(function(t) { return t.label !== currentTier; });
+        if (options.length === 0) { alert('変更できる区分がありません'); return; }
+        var msg = '「' + name + '」の区分を変更\n現在: ' + (currentTier || '一般') + '\n\n変更先を選んでください:\n';
+        for (var i = 0; i < options.length; i++) {
+            msg += (i + 1) + '. ' + options[i].label + '（¥' + (options[i].amount || 0).toLocaleString() + '）\n';
+        }
+        var choice = prompt(msg, '1');
+        if (!choice) return;
+        var idx = parseInt(choice, 10) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= options.length) { alert('無効な選択です'); return; }
+        var newTier = options[idx].label;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/change-tier/' + eventId, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 403) { alert('❗ 変更権限がありません'); return; }
+            loadEvent();
+        };
+        xhr.onerror = function() { alert('通信エラー'); };
+        xhr.send(JSON.stringify({ name: name, newTier: newTier, adminToken: adminToken, requesterName: myName }));
     }
 
     // 自動更新（10秒ごと）
