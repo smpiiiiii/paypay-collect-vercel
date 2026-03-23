@@ -97,6 +97,16 @@
         .history-card .h-info { flex: 1; min-width: 0 }
         .history-card .h-name { font-size: 13px; font-weight: 700 }
         .history-card .h-meta { font-size: 10px; color: #999 }
+        /* 履歴カード: 済状態 */
+        .history-card.done { background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border-color: #c8e6c9 }
+        .history-card.done .h-name { text-decoration: line-through; color: #999 }
+        .history-card.done .h-icon { opacity: .5 }
+        .history-card .h-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center }
+        .history-card .h-done-btn { width: 30px; height: 30px; border: 2px solid #ddd; border-radius: 50%; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all .2s; flex-shrink: 0 }
+        .history-card .h-done-btn:active { transform: scale(.9) }
+        .history-card.done .h-done-btn { background: #00b900; border-color: #00b900; color: #fff }
+        .history-card .h-del-btn { width: 28px; height: 28px; border: none; border-radius: 8px; background: #ffeaea; color: #e74c3c; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s }
+        .history-card .h-del-btn:active { opacity: .7; transform: scale(.9) }
 
         /* ローディング画面 */
         .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center }
@@ -381,12 +391,33 @@
     }
     function addToHistory(id, name) {
         var history = getHistory();
-        // 重複防止
+        // 重複防止（既存のdone状態を保持）
+        var existing = null;
+        for (var i = 0; i < history.length; i++) {
+            if (history[i].id === id) { existing = history[i]; break; }
+        }
+        var done = existing ? !!existing.done : false;
         history = history.filter(function(h) { return h.id !== id; });
-        history.unshift({ id: id, name: name, date: new Date().toISOString() });
+        history.unshift({ id: id, name: name, date: new Date().toISOString(), done: done });
         // 最大20件
         if (history.length > 20) history = history.slice(0, 20);
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
+    }
+    // 済チェックの切り替え
+    function toggleHistoryDone(id) {
+        var history = getHistory();
+        for (var i = 0; i < history.length; i++) {
+            if (history[i].id === id) { history[i].done = !history[i].done; break; }
+        }
+        try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
+        renderHistory();
+    }
+    // 履歴から削除
+    function removeHistory(id) {
+        if (!confirm('この集金を履歴から削除しますか？')) return;
+        var history = getHistory().filter(function(h) { return h.id !== id; });
+        try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
+        renderHistory();
     }
     function renderHistory() {
         var history = getHistory();
@@ -395,24 +426,70 @@
         if (history.length === 0) { section.classList.add('hidden'); return; }
         section.classList.remove('hidden');
         while (list.firstChild) list.removeChild(list.firstChild);
-        for (var i = 0; i < history.length; i++) {
-            var h = history[i];
-            var a = document.createElement('a');
-            a.className = 'history-card';
-            a.href = '/collect/' + h.id;
+        // 未完了→済の順にソート
+        var sorted = history.slice().sort(function(a, b) {
+            if (!!a.done === !!b.done) return 0;
+            return a.done ? 1 : -1;
+        });
+        for (var i = 0; i < sorted.length; i++) {
+            var h = sorted[i];
+            var card = document.createElement('div');
+            card.className = 'history-card' + (h.done ? ' done' : '');
+            // 済チェックボタン
+            var doneBtn = document.createElement('button');
+            doneBtn.className = 'h-done-btn';
+            doneBtn.textContent = h.done ? '✓' : '';
+            doneBtn.title = h.done ? '済を解除' : '済にする';
+            (function(hid) {
+                doneBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleHistoryDone(hid);
+                });
+            })(h.id);
+            // アイコン
             var icon = document.createElement('span');
-            icon.className = 'h-icon'; icon.textContent = '💰';
+            icon.className = 'h-icon'; icon.textContent = h.done ? '✅' : '💰';
+            // 情報部分
             var info = document.createElement('div');
             info.className = 'h-info';
+            info.style.cursor = 'pointer';
             var nameEl = document.createElement('div');
             nameEl.className = 'h-name'; nameEl.textContent = h.name;
             var meta = document.createElement('div');
             meta.className = 'h-meta';
             var d = new Date(h.date);
             meta.textContent = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + ('0'+d.getMinutes()).slice(-2);
+            if (h.done) {
+                var doneBadge = document.createElement('span');
+                doneBadge.style.cssText = 'background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:6px;font-weight:700;margin-left:6px';
+                doneBadge.textContent = '済';
+                meta.appendChild(doneBadge);
+            }
             info.appendChild(nameEl); info.appendChild(meta);
-            a.appendChild(icon); a.appendChild(info);
-            list.appendChild(a);
+            // infoクリックでイベントページに遷移
+            (function(hid) {
+                info.addEventListener('click', function() { location.href = '/collect/' + hid; });
+            })(h.id);
+            // 削除ボタン
+            var delBtn = document.createElement('button');
+            delBtn.className = 'h-del-btn';
+            delBtn.textContent = '🗑';
+            delBtn.title = '履歴から削除';
+            (function(hid) {
+                delBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    removeHistory(hid);
+                });
+            })(h.id);
+            // アクション部分
+            var actionsDiv = document.createElement('div');
+            actionsDiv.className = 'h-actions';
+            actionsDiv.appendChild(delBtn);
+            card.appendChild(doneBtn);
+            card.appendChild(icon);
+            card.appendChild(info);
+            card.appendChild(actionsDiv);
+            list.appendChild(card);
         }
     }
 
