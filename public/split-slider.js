@@ -69,11 +69,11 @@
         splitTiers.forEach(function(t) { totalPeople += t.count; });
         if (splitTotal <= 0 || totalPeople === 0) return;
 
-        var maxPerPerson = splitTotal;
+        var maxPerPerson = splitTotal; // 個別スライダー用（区分ごとに調整）
 
         // 2区分の場合は1本スライダー（連動）
         if (splitTiers.length === 2) {
-            renderLinkedSlider(container, maxPerPerson);
+            renderLinkedSlider(container);
             return;
         }
 
@@ -107,7 +107,7 @@
             slider.type = 'range';
             slider.className = 'split-slider';
             slider.min = '0';
-            slider.max = String(maxPerPerson);
+            slider.max = String(tier.count > 0 ? Math.floor(splitTotal / tier.count / 100) * 100 : splitTotal);
             slider.step = '100';
             slider.value = String(tier.amount || 0);
             slider.id = 'splitSlider_' + idx;
@@ -131,7 +131,7 @@
     }
 
     // 2区分専用: 1本スライダーで連動
-    function renderLinkedSlider(container, maxPerPerson) {
+    function renderLinkedSlider(container) {
         var t0 = splitTiers[0];
         var t1 = splitTiers[1];
 
@@ -145,10 +145,11 @@
         var slider = document.createElement('input');
         slider.type = 'range';
         slider.className = 'split-slider';
+        var maxForT0 = t0.count > 0 ? Math.floor(splitTotal / t0.count / 100) * 100 : splitTotal;
         slider.min = '0';
-        slider.max = String(maxPerPerson);
+        slider.max = String(maxForT0);
         slider.step = '100';
-        slider.value = String(t0.amount || Math.round(splitTotal / 2 / 100) * 100);
+        slider.value = String(t0.amount || Math.round(maxForT0 / 2 / 100) * 100);
         slider.style.cssText = 'width:100%;margin:8px 0;cursor:pointer;height:8px';
         container.appendChild(slider);
 
