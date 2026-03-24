@@ -223,7 +223,8 @@
             <h3 style="color:#e65100">📣 未払い催促</h3>
             <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.5">未払いの参加者リストをLINEグループに共有して催促できます。</div>
             <div id="unpaidPreview" style="font-size:12px;color:#333;margin-bottom:8px;background:#fff;padding:10px;border-radius:8px;line-height:1.6"></div>
-            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促する</button>
+            <button class="btn btn-remind" id="remindBtn">📣 LINE催促</button>
+            <button class="btn btn-outline" id="remindCopyBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 催促文コピー</button>
         </div>
 
 
@@ -422,26 +423,18 @@
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
         renderHistory();
     }
-    // テンプレート適用機能
     function applyTemplate(hist) {
-        // イベント名をセット
         var nameInput = document.getElementById('createName');
         if (nameInput) nameInput.value = hist.name;
-        // 既存の区分行をクリア
         var container = document.getElementById('tierRows');
         while (container.firstChild) container.removeChild(container.firstChild);
-        // テンプレートの区分を適用
         if (hist.tiers && hist.tiers.length > 0) {
             for (var i = 0; i < hist.tiers.length; i++) {
                 var t = hist.tiers[i];
                 addTierRow(t.label || '', t.amount || '', t.paypayLink || '');
             }
-        } else {
-            addTierRow('男子', '', ''); addTierRow('女子', '', '');
-        }
-        // 作成フォームにスクロール
+        } else { addTierRow('男子', '', ''); addTierRow('女子', '', ''); }
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        // フィードバック
         nameInput.style.transition = 'background 0.3s';
         nameInput.style.background = '#e8f5e9';
         setTimeout(function() { nameInput.style.background = ''; }, 1500);
@@ -472,11 +465,7 @@
             var icon = document.createElement('span');
             icon.className = 'h-icon'; icon.textContent = h.done ? '✅' : '💰';
             icon.style.cursor = 'pointer'; icon.title = h.done ? 'タップで済を解除' : 'タップで済にする';
-            (function(hid) {
-                icon.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                });
-            })(h.id);
+            (function(hid) { icon.addEventListener('click', function(e) { e.stopPropagation(); toggleHistoryDone(hid); }); })(h.id);
             // 情報部分
             var info = document.createElement('div');
             info.className = 'h-info';
@@ -519,21 +508,16 @@
             var actionsDiv = document.createElement('div');
             actionsDiv.className = 'h-actions';
             actionsDiv.appendChild(delBtn);
-            // テンプレートとして使用ボタン
             if (h.tiers && h.tiers.length > 0) {
                 var tplBtn = document.createElement('button');
                 tplBtn.className = 'h-del-btn';
-                tplBtn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;font-size:11px;width:auto;padding:0 8px;border-radius:8px';
+                tplBtn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;font-size:11px;width:auto;padding:0 8px;border-radius:8px;color:#1976d2';
                 tplBtn.textContent = '📋';
                 tplBtn.title = 'この設定で新規作成';
-                (function(hist) {
-                    tplBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        applyTemplate(hist);
-                    });
-                })(h);
+                (function(hist) { tplBtn.addEventListener('click', function(e) { e.stopPropagation(); applyTemplate(hist); }); })(h);
                 actionsDiv.appendChild(tplBtn);
             }
+            card.appendChild(icon);
             card.appendChild(icon);
             card.appendChild(info);
             card.appendChild(actionsDiv);
@@ -709,7 +693,6 @@
         btn.addEventListener('touchstart', onStart, { passive: true });
         btn.addEventListener('touchend', onEnd);
         btn.addEventListener('touchcancel', function() { clearTimeout(timer); });
-        // マウス操作にも対応
         btn.addEventListener('mousedown', onStart);
         btn.addEventListener('mouseup', onEnd);
         btn.addEventListener('mouseleave', function() { clearTimeout(timer); });
@@ -740,7 +723,7 @@
 
 
 
-    // 長押しでURLコピー
+    // 長押しでコピー登録
     addLongPress('shareBtn', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
@@ -1239,35 +1222,21 @@
         }
         actionsDiv.appendChild(badge);
 
-        // 済バッジ長押しで支払い情報を表示
+        // 済バッジ長押しで支払い情報表示
         if (m.paid) {
             (function(member, badgeEl) {
                 var timer = null;
                 function showInfo() {
                     var info = [];
-                    if (member.paidAt) {
-                        info.push('💰 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
-                    }
-                    if (member.selfReported) {
-                        info.push('📝 本人が自己申告');
-                    }
-                    if (member.actionBy) {
-                        info.push('👤 操作者: ' + member.actionBy);
-                    }
-                    if (member.confirmed) {
-                        info.push('✅ 幹事が確認済み');
-                    }
+                    if (member.paidAt) info.push('💰 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
+                    if (member.selfReported) info.push('📝 本人が自己申告');
+                    if (member.actionBy) info.push('👤 操作者: ' + member.actionBy);
+                    if (member.confirmed) info.push('✅ 幹事が確認済み');
                     if (info.length === 0) info.push('支払い済み');
                     alert(member.name + ' の支払い情報\n\n' + info.join('\n'));
                 }
-                function onStart(e) {
-                    timer = setTimeout(function() { timer = 'done'; showInfo(); }, 600);
-                }
-                function onEnd(e) {
-                    if (timer === 'done') { e.preventDefault(); e.stopPropagation(); }
-                    else clearTimeout(timer);
-                    timer = null;
-                }
+                function onStart(e) { timer = setTimeout(function() { timer = 'done'; showInfo(); }, 600); }
+                function onEnd(e) { if (timer === 'done') { e.preventDefault(); e.stopPropagation(); } else clearTimeout(timer); timer = null; }
                 badgeEl.style.cursor = 'pointer';
                 badgeEl.addEventListener('touchstart', onStart, { passive: true });
                 badgeEl.addEventListener('touchend', onEnd);
