@@ -1016,6 +1016,12 @@
         // 幹事モードリンクの表示制御（トークンがない場合は非表示）
         document.getElementById('adminToggle').style.display = adminToken ? '' : 'none';
             document.getElementById('adminHelpText').style.display = adminToken ? '' : 'none';
+            // 幹事は自動的に幹事モードON
+            if (adminToken) {
+                isAdmin = true;
+                document.getElementById('adminToggle').textContent = '\uD83D\uDD13 幹事モード ON';
+                document.getElementById('adminToggle').classList.add('active');
+            }
 
         // 幹事モードバナー
         document.getElementById('adminBanner').classList.toggle('hidden', !isAdmin);
@@ -1066,7 +1072,8 @@
         if (isAdmin && unpaidMembers.length > 0) {
             remindCard.classList.remove('hidden');
             var previewLines = unpaidMembers.map(function(m) {
-                return '⏳ ' + m.name + '（' + (m.tier || '一般') + ' ¥' + (m.amount || 0).toLocaleString() + '）';
+                var rmAmt = (m.amount === 0) ? '割り勘/未定' : '¥' + m.amount.toLocaleString();
+                return '⏳ ' + m.name + '（' + (m.tier || '一般') + ' ' + rmAmt + '）';
             });
             unpaidPreview.textContent = previewLines.join('\n');
             unpaidPreview.style.whiteSpace = 'pre-line';
@@ -1218,7 +1225,7 @@
         document.getElementById('joinName').placeholder = '追加する人の名前';
         joinCard.classList.remove('hidden');
 
-        var amountText = (me.amount > 0) ? '¥' + me.amount.toLocaleString() : '未定';
+        var amountText = (me.amount > 0) ? '¥' + me.amount.toLocaleString() : '割り勘/未定';
         var nameDiv = makeText('div', '👤 ' + me.name + '（' + (me.tier || '一般') + ' ' + amountText + '）', '');
         nameDiv.style.fontWeight = '700'; nameDiv.style.marginBottom = '8px';
         status.appendChild(nameDiv);
@@ -1254,7 +1261,7 @@
             if (tierPaypayLink) {
                 var payBtn = document.createElement('button');
                 payBtn.className = 'btn btn-paypay'; payBtn.style.marginBottom = '6px';
-                payBtn.textContent = '💱 PayPayで ¥' + (me.amount || 0).toLocaleString() + ' 送金する';
+                if (me.amount > 0) { payBtn.textContent = '\uD83D\uDCB1 PayPayで ¥' + me.amount.toLocaleString() + ' 送金する'; } else { payBtn.style.display = 'none'; }
                 payBtn.addEventListener('click', function() {
                     // PayPay送金画面を開く
                     window.open(tierPaypayLink, '_blank');
@@ -1280,7 +1287,7 @@
             reportBtn.className = 'btn btn-orange';
             reportBtn.textContent = '💸 送金しました！（自己申告）';
             reportBtn.addEventListener('click', function() {
-                if (!confirm('¥' + (me.amount || 0).toLocaleString() + ' を送金しましたか？')) return;
+                if (me.amount > 0 && !confirm('¥' + me.amount.toLocaleString() + ' を送金しましたか？')) return;
                 selfReport(myName);
             });
             status.appendChild(reportBtn);
