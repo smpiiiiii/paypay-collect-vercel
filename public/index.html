@@ -576,25 +576,7 @@
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
-        var memo = (document.getElementById('cM    document.getElementById('shareBtn').addEventListener('click', function() {
-        var refName = myName ? encodeURIComponent(myName) : '';
-        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
-        var tiers = getTiers();
-        var members = eventData ? (eventData.members || []) : [];
-        var paid = 0;
-        for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
-        var tierInfo = '';
-        if (tiers.length > 1) {
-            tierInfo = tiers.map(function(t) { return t.label + ': ¥' + (t.amount || 0).toLocaleString(); }).join(' / ');
-        } else if (tiers.length === 1) {
-            tierInfo = '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
-        }
-        var eventName = eventData ? (eventData.name || '集金') : '集金';
-        var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
-        // LINEに直接共有
-        var lineUrl = 'https://line.me/R/share?text=' + encodeURIComponent(text);
-        window.open(lineUrl, '_blank');
-    });�
+        var memo = (document.getElementById('createMemo') || {}).value || '';
         var refName = '';
         try { refName = localStorage.getItem('collect_ref_' + eventId) || ''; } catch(e) {}
         var addedByName = myName || refName || '';
