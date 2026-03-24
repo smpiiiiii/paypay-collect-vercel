@@ -1201,8 +1201,7 @@
 
         var completeBtnDiv = document.getElementById('completeBtnDiv');
         if (completeBtnDiv) {
-            var allPaid = membersAll.length > 0 && unpaidMembers.length === 0;
-            completeBtnDiv.classList.toggle('hidden', !(isAdmin && allPaid));
+            completeBtnDiv.classList.toggle('hidden', !isAdmin);
         }
 
 
