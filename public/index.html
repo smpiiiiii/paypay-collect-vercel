@@ -855,6 +855,7 @@
         var timer = null;
         var longPressed = false;
         function onStart(e) {
+            e.preventDefault();
             longPressed = false;
             timer = setTimeout(function() {
                 longPressed = true;
@@ -881,7 +882,7 @@
             clearTimeout(timer);
             if (longPressed) { e.preventDefault(); e.stopPropagation(); }
         }
-        btn.addEventListener('touchstart', onStart, { passive: true });
+        btn.addEventListener('touchstart', onStart, { passive: false });
         btn.addEventListener('touchend', onEnd);
         btn.addEventListener('touchcancel', function() { clearTimeout(timer); });
         btn.addEventListener('mousedown', onStart);
@@ -918,7 +919,7 @@
         var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
         var evName = eventData ? (eventData.name || '\u96C6\u91D1') : '\u96C6\u91D1';
-        return '\uD83D\uDCB0 ' + evName + '\\n\\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\\n' + url;
+        return '\uD83D\uDCB0 ' + evName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
     });
     addLongPress('remindBtn', function() { return buildRemindMessage(); });
     addLongPress('remindBtnAll', function() { return buildRemindMessage(); });
