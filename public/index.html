@@ -395,20 +395,6 @@
     function getHistory() {
         try { return JSON.parse(localStorage.getItem('collect_history') || '[]'); } catch(e) { return []; }
     }
-    // お気に入り管理
-    function getFavorites() {
-        try { return JSON.parse(localStorage.getItem('collect_favorites') || '[]'); } catch(e) { return []; }
-    }
-    function toggleFavorite(id) {
-        var favs = getFavorites();
-        var idx = favs.indexOf(id);
-        if (idx >= 0) favs.splice(idx, 1);
-        else favs.push(id);
-        try { localStorage.setItem('collect_favorites', JSON.stringify(favs)); } catch(e) {}
-        renderHistory();
-    }
-    function isFavorite(id) { return getFavorites().indexOf(id) >= 0; }
-
     function addToHistory(id, name, tiers) {
         var history = getHistory();
         // 重複防止（既存のdone状態を保持）
@@ -439,6 +425,19 @@
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
         renderHistory();
     }
+    // お気に入り管理
+    function getFavorites() {
+        try { return JSON.parse(localStorage.getItem('collect_favorites') || '[]'); } catch(e) { return []; }
+    }
+    function toggleFavorite(id) {
+        var favs = getFavorites();
+        var idx = favs.indexOf(id);
+        if (idx >= 0) favs.splice(idx, 1);
+        else favs.push(id);
+        try { localStorage.setItem('collect_favorites', JSON.stringify(favs)); } catch(e) {}
+        renderHistory();
+    }
+
     function applyTemplate(hist) {
         var nameInput = document.getElementById('cName');
         if (nameInput) nameInput.value = hist.name;
@@ -448,7 +447,7 @@
             for (var i = 0; i < hist.tiers.length; i++) {
                 addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].paypayLink || '');
             }
-        } else { addTierRow('男子', '', ''); addTierRow('女子', '', ''); }
+        } else { addTierRow('\u7537\u5B50', '', ''); addTierRow('\u5973\u5B50', '', ''); }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (nameInput) { nameInput.style.transition = 'background 0.3s'; nameInput.style.background = '#e8f5e9'; setTimeout(function() { nameInput.style.background = ''; }, 1500); }
     }
@@ -521,10 +520,9 @@
             // アクション部分
             var actionsDiv = document.createElement('div');
             actionsDiv.className = 'h-actions';
-            // お気に入りボタン
             var favBtn = document.createElement('button');
             favBtn.className = 'h-fav-btn' + (isFav ? ' active' : '');
-            favBtn.textContent = isFav ? '★' : '☆';
+            favBtn.textContent = isFav ? '\u2605' : '\u2606';
             favBtn.title = isFav ? 'お気に入り解除' : 'お気に入り登録';
             (function(hid) { favBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(hid); }); })(h.id);
             actionsDiv.appendChild(favBtn);
@@ -533,7 +531,7 @@
                 var tplBtn = document.createElement('button');
                 tplBtn.className = 'h-del-btn';
                 tplBtn.style.cssText = 'background:#e3f2fd;font-size:11px;width:auto;padding:0 8px;border-radius:8px;color:#1976d2';
-                tplBtn.textContent = '📋 複製';
+                tplBtn.textContent = '\uD83D\uDCCB 複製';
                 tplBtn.title = 'この設定で新規集金を作成';
                 (function(hist) { tplBtn.addEventListener('click', function(e) { e.stopPropagation(); applyTemplate(hist); }); })(h);
                 actionsDiv.appendChild(tplBtn);
@@ -676,7 +674,6 @@
         xhr.send(JSON.stringify({ name: name, tier: tier, addedBy: addedByName, adminToken: adminToken }));
     });
 
-
     // ===== 長押しでコピー機能 =====
     function addLongPress(btnId, getTextFn) {
         var btn = document.getElementById(btnId);
@@ -746,8 +743,8 @@
     addLongPress('shareBtn', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
-        var evName = eventData ? (eventData.name || '集金') : '集金';
-        return '\uD83D\uDCB0 ' + evName + '\\n\\n\uD83D\uDC47 参加・支払い報告はこちら\\n' + url;
+        var evName = eventData ? (eventData.name || '\u96C6\u91D1') : '\u96C6\u91D1';
+        return '\uD83D\uDCB0 ' + evName + '\\n\\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\\n' + url;
     });
     addLongPress('remindBtn', function() { return buildRemindMessage(); });
     addLongPress('remindBtnAll', function() { return buildRemindMessage(); });
@@ -817,11 +814,11 @@
     // 完了ボタン
     document.getElementById('completeBtn').addEventListener('click', function() {
         var total = 0;
-        var members = eventData ? (eventData.members || []) : [];
-        for (var i = 0; i < members.length; i++) total += (members[i].amount || 0);
-        alert('🎉 集金完了！\n\n参加者: ' + members.length + '人\n合計: ¥' + total.toLocaleString() + '\n\nお疲れ様でした！');
-        // 履歴を済にする
+        var ms = eventData ? (eventData.members || []) : [];
+        for (var i = 0; i < ms.length; i++) total += (ms[i].amount || 0);
+        alert('\uD83C\uDF89 集金完了！\n\n参加者: ' + ms.length + '人\n合計: \u00A5' + total.toLocaleString() + '\n\nお疲れ様でした！');
         toggleHistoryDone(eventId);
+        if (confirm('トップ画面に戻りますか？')) { location.href = '/'; }
     });
 
     // ===== 幹事モード =====
@@ -964,7 +961,6 @@
         var remindBtnSimple = document.getElementById('remindBtnSimple');
         remindBtnSimple.classList.toggle('hidden', unpaidMembers.length === 0);
 
-        // 全員支払い済みなら完了ボタン表示（幹事のみ）
         var completeBtnDiv = document.getElementById('completeBtnDiv');
         if (completeBtnDiv) {
             var allPaid = membersAll.length > 0 && unpaidMembers.length === 0;
@@ -1295,23 +1291,22 @@
                 });
             })(m.name);
             actionsDiv.appendChild(delBtn);
-
-            // 区分変更ボタン
-            var tiersForChange = getTiers();
-            if (tiersForChange.length >= 2) {
-                var changeBtn = document.createElement('button');
-                changeBtn.className = 'btn-sm';
-                changeBtn.textContent = '🔄';
-                changeBtn.title = m.name + 'の区分を変更';
-                changeBtn.style.cssText = 'margin-left:4px;background:#5c6bc0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
-                (function(memberName, currentTier) {
-                    changeBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        changeTier(memberName, currentTier);
-                    });
-                })(m.name, m.tier);
-                actionsDiv.appendChild(changeBtn);
-            }
+        }
+        // 区分変更ボタン: 区分が2つ以上ある場合、権限のある人に表示
+        var tiersForChange = getTiers();
+        if (tiersForChange.length >= 2 && canDelete) {
+            var changeBtn = document.createElement('button');
+            changeBtn.className = 'btn-sm';
+            changeBtn.textContent = '🔄';
+            changeBtn.title = m.name + 'の区分を変更';
+            changeBtn.style.cssText = 'margin-left:4px;background:#5c6bc0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
+            (function(memberName, currentTier) {
+                changeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    changeTier(memberName, currentTier);
+                });
+            })(m.name, m.tier);
+            actionsDiv.appendChild(changeBtn);
         }
         // 支払い済みボタン: 未払いの人に対して誰でも押せる
         if (!m.paid && myName) {
