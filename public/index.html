@@ -702,13 +702,8 @@
         var rows = tierContainer.querySelectorAll('.tier-row');
         for (var i = 0; i < rows.length; i++) {
             var nameInput = rows[i].querySelector('.tier-name');
-            var amountInput = rows[i].querySelector('.tier-amount');
-            var tAmountType = rows[i].querySelector(".tier-amount-type");
-            var tLabel = (nameInput.value || '').trim();
-            var tAmount = parseInt(amountInput.value) || 0;
-            var tType = tAmountType ? tAmountType.value : "fixed";
-            if (tAmount > 9999999) tAmount = 9999999;
-            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, amountType: tType });
+                                    var tLabel = (nameInput.value || '').trim();
+                                                if (tLabel) tiers.push({ label: tLabel, amount: 0, amountType: 'fixed' });
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
