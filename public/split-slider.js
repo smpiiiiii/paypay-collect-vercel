@@ -77,8 +77,16 @@
             return;
         }
 
-        // 3区分以上は個別スライダー
-        splitTiers.forEach(function(tier, idx) {
+        // 3区分以上: カスケード連動スライダー
+        // 最後の区分は自動計算（スライダーなし）
+        renderCascadeSliders(container);
+    }
+
+    function renderCascadeSliders(container) {
+        for (var idx = 0; idx < splitTiers.length; idx++) {
+            var tier = splitTiers[idx];
+            var isLast = idx === splitTiers.length - 1;
+
             var div = document.createElement('div');
             div.className = 'split-tier';
 
@@ -89,7 +97,7 @@
             labelSpan.textContent = tier.label;
             var peopleSpan = document.createElement('span');
             peopleSpan.className = 'tier-people';
-            peopleSpan.textContent = tier.count + '人';
+            peopleSpan.textContent = tier.count + '人' + (isLast ? ' (自動計算)' : '');
             header.appendChild(labelSpan);
             header.appendChild(peopleSpan);
 
@@ -103,29 +111,79 @@
             subtotalDiv.id = 'splitSub_' + idx;
             subtotalDiv.textContent = '小計: ¥' + ((tier.amount || 0) * tier.count).toLocaleString();
 
-            var slider = document.createElement('input');
-            slider.type = 'range';
-            slider.className = 'split-slider';
-            slider.min = '0';
-            slider.max = String(tier.count > 0 ? Math.floor(splitTotal / tier.count / 100) * 100 : splitTotal);
-            slider.step = '100';
-            slider.value = String(tier.amount || 0);
-            slider.id = 'splitSlider_' + idx;
-            (function(i) {
-                slider.addEventListener('input', function() {
-                    var val = parseInt(this.value) || 0;
-                    val = Math.round(val / 100) * 100;
-                    splitTiers[i].amount = val;
-                    updateDisplay();
-                });
-            })(idx);
-
             div.appendChild(header);
             div.appendChild(amountDiv);
             div.appendChild(subtotalDiv);
-            div.appendChild(slider);
+
+            // 最後の区分以外はスライダーを表示
+            if (!isLast) {
+                var remaining = calcRemaining(idx);
+                var maxVal = tier.count > 0 ? Math.floor(remaining / tier.count / 100) * 100 : 0;
+
+                var slider = document.createElement('input');
+                slider.type = 'range';
+                slider.className = 'split-slider';
+                slider.min = '0';
+                slider.max = String(maxVal);
+                slider.step = '100';
+                slider.value = String(tier.amount || 0);
+                slider.id = 'splitSlider_' + idx;
+                (function(i) {
+                    slider.addEventListener('input', function() {
+                        var val = parseInt(this.value) || 0;
+                        val = Math.round(val / 100) * 100;
+                        splitTiers[i].amount = val;
+                        cascadeUpdate(i);
+                    });
+                })(idx);
+                div.appendChild(slider);
+            }
+
             container.appendChild(div);
-        });
+        }
+        cascadeUpdate(-1);
+    }
+
+    // idx番目より前の区分で使った金額を引いた残りを返す
+    function calcRemaining(idx) {
+        var used = 0;
+        for (var i = 0; i < idx; i++) {
+            used += splitTiers[i].amount * splitTiers[i].count;
+        }
+        return splitTotal - used;
+    }
+
+    // カスケード更新: changedIdxのスライダーが動いた→以降の区分を再計算
+    function cascadeUpdate(changedIdx) {
+        // changedIdx以降の区分の残額を計算してmax/value更新
+        for (var i = Math.max(0, changedIdx + 1); i < splitTiers.length; i++) {
+            var remaining = calcRemaining(i);
+            var isLast = i === splitTiers.length - 1;
+
+            if (isLast) {
+                // 最後の区分: 自動計算
+                splitTiers[i].amount = splitTiers[i].count > 0 ? Math.max(0, Math.round(remaining / splitTiers[i].count / 100) * 100) : 0;
+            } else {
+                // 中間: maxを更新
+                var maxVal = splitTiers[i].count > 0 ? Math.floor(remaining / splitTiers[i].count / 100) * 100 : 0;
+                var slider = document.getElementById('splitSlider_' + i);
+                if (slider) {
+                    slider.max = String(maxVal);
+                    if (parseInt(slider.value) > maxVal) {
+                        slider.value = String(maxVal);
+                        splitTiers[i].amount = maxVal;
+                    }
+                }
+            }
+        }
+
+        // 表示更新
+        for (var j = 0; j < splitTiers.length; j++) {
+            var amtEl = document.getElementById('splitAmt_' + j);
+            var subEl = document.getElementById('splitSub_' + j);
+            if (amtEl) amtEl.textContent = '¥' + splitTiers[j].amount.toLocaleString() + '/人';
+            if (subEl) subEl.textContent = '小計: ¥' + (splitTiers[j].amount * splitTiers[j].count).toLocaleString();
+        }
 
         updateDisplay();
     }
