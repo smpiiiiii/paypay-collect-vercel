@@ -66,8 +66,8 @@ module.exports = async (req, res) => {
       const id = crypto.randomBytes(4).toString('hex');
       const adminToken = crypto.randomBytes(16).toString('hex');
       const tiers = Array.isArray(body.priceTiers) && body.priceTiers.length > 0
-        ? body.priceTiers.filter(t => t.label).map(t => ({ label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '' }))
-        : [{ label: '一般', amount: body.amount || 0, paypayLink: '' }];
+        ? body.priceTiers.filter(t => t.label).map(t => ({ label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '', amountType: t.amountType || 'fixed' }))
+        : [{ label: '一般', amount: body.amount || 0, paypayLink: '', amountType: 'fixed' }];
       const event = {
         id, name: body.name || '集金', adminToken, priceTiers: tiers, members: [],
         memo: (body.memo || '').trim(),
@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
       if (!body.adminToken || !event.adminToken || body.adminToken !== event.adminToken) {
         return res.status(403).json({ status: 'forbidden', message: '幹事権限がありません' });
       }
-      const newTiers = Array.isArray(body.priceTiers) ? body.priceTiers.filter(t => t.label).map(t => ({ label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '' })) : [];
+      const newTiers = Array.isArray(body.priceTiers) ? body.priceTiers.filter(t => t.label).map(t => ({ label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '', amountType: t.amountType || 'fixed' })) : [];
       if (newTiers.length === 0) return res.status(400).json({ status: 'error', message: '有効な料金区分が必要です' });
       event.priceTiers = newTiers;
       for (let i = 0; i < event.members.length; i++) {
