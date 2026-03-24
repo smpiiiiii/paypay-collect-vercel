@@ -74,7 +74,7 @@
         .msg { text-align: center; padding: 16px; color: #999; font-size: 12px }
         .share-btns { display: flex; gap: 8px; margin-top: 8px }
         .share-btns .btn { flex: 1; font-size: 12px; padding: 10px }
-        .btn-green::after, .btn-remind::after { content: "長押しでコピー"; display: block; font-size: 9px; opacity: 0.6; margin-top: 2px }
+        #shareBtn::after, #remindBtn::after, #remindBtnAll::after { content: "長押しでコピー"; display: block; font-size: 9px; opacity: 0.6; margin-top: 2px }
         .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
         .hidden { display: none }
 
@@ -191,7 +191,7 @@
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
-            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">\uD83D\uDCA1 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
+            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
             <button class="btn btn-red" id="createBtn">✅ 作成する</button>
         </div>
 
@@ -288,11 +288,12 @@
             <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
         </div>
         <!-- 未払いがいる場合のみ表示される簡易催促ボタン（幹事でなくても使える） -->
+        <div id="completeBtnDiv" class="hidden" style="margin-top:6px;text-align:center"><button class="btn btn-green" id="completeBtn" style="font-size:14px;padding:12px">🎉 集金完了！</button></div>
         <div id="remindBtnSimple" class="hidden" style="margin-top:6px">
             <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
-        <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">\uD83D\uDCA1 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
+        <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">💡 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
     </div>
 </div>
@@ -645,7 +646,7 @@
             }
         };
         xhr.onerror = function() { alert('通信エラー'); };
-        xhr.send(JSON.stringify({ name: name, tier: tier, addedBy: addedByName }));
+        xhr.send(JSON.stringify({ name: name, tier: tier, addedBy: addedByName, adminToken: adminToken }));
     });
 
 
@@ -786,6 +787,16 @@
 
 
 
+    // 完了ボタン
+    document.getElementById('completeBtn').addEventListener('click', function() {
+        var total = 0;
+        var members = eventData ? (eventData.members || []) : [];
+        for (var i = 0; i < members.length; i++) total += (members[i].amount || 0);
+        alert('🎉 集金完了！\n\n参加者: ' + members.length + '人\n合計: ¥' + total.toLocaleString() + '\n\nお疲れ様でした！');
+        // 履歴を済にする
+        toggleHistoryDone(eventId);
+    });
+
     // ===== 幹事モード =====
     document.getElementById('adminToggle').addEventListener('click', function() {
         if (!adminToken) {
@@ -925,6 +936,13 @@
         // 簡易催促ボタン（全員向け）の表示制御
         var remindBtnSimple = document.getElementById('remindBtnSimple');
         remindBtnSimple.classList.toggle('hidden', unpaidMembers.length === 0);
+
+        // 全員支払い済みなら完了ボタン表示（幹事のみ）
+        var completeBtnDiv = document.getElementById('completeBtnDiv');
+        if (completeBtnDiv) {
+            var allPaid = members.length > 0 && unpaidMembers.length === 0;
+            completeBtnDiv.classList.toggle('hidden', !(isAdmin && allPaid));
+        }
 
 
         document.getElementById('headerTitle').textContent = '💰 ' + (eventData.name || '集金');
@@ -1250,6 +1268,23 @@
                 });
             })(m.name);
             actionsDiv.appendChild(delBtn);
+
+            // 区分変更ボタン
+            var tiersForChange = getTiers();
+            if (tiersForChange.length >= 2) {
+                var changeBtn = document.createElement('button');
+                changeBtn.className = 'btn-sm';
+                changeBtn.textContent = '🔄';
+                changeBtn.title = m.name + 'の区分を変更';
+                changeBtn.style.cssText = 'margin-left:4px;background:#5c6bc0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
+                (function(memberName, currentTier) {
+                    changeBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        changeTier(memberName, currentTier);
+                    });
+                })(m.name, m.tier);
+                actionsDiv.appendChild(changeBtn);
+            }
         }
         // 支払い済みボタン: 未払いの人に対して誰でも押せる
         if (!m.paid && myName) {

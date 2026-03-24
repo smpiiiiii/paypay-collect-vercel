@@ -105,10 +105,11 @@ module.exports = async (req, res) => {
       const tierInfo = event.priceTiers.find(t => t.label === tier);
       const amount = tierInfo ? tierInfo.amount : (event.priceTiers[0]?.amount || 0);
       const addedBy = (body.addedBy || '').trim();
+      const isOrganizer = body.adminToken && body.adminToken === event.adminToken;
       event.members.push({
         name, tier: tier || event.priceTiers[0]?.label || '一般',
-        amount, paid: false, selfReported: false, confirmed: false,
-        addedBy: addedBy || name, joinedAt: new Date().toISOString(), paidAt: null
+        amount, paid: isOrganizer, selfReported: false, confirmed: isOrganizer,
+        addedBy: addedBy || name, joinedAt: new Date().toISOString(), paidAt: isOrganizer ? new Date().toISOString() : null, actionBy: isOrganizer ? '幹事（自動）' : null
       });
       await saveEvent(id, event);
       return res.status(200).json({ status: 'ok' });
