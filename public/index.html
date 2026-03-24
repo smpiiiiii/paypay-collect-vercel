@@ -191,7 +191,7 @@
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
-            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
+            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">\uD83D\uDCA1 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
             <button class="btn btn-red" id="createBtn">✅ 作成する</button>
         </div>
 
@@ -292,7 +292,7 @@
             <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
-        <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">💡 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
+        <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">\uD83D\uDCA1 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
     </div>
 </div>
@@ -424,20 +424,17 @@
         renderHistory();
     }
     function applyTemplate(hist) {
-        var nameInput = document.getElementById('createName');
+        var nameInput = document.getElementById('cName');
         if (nameInput) nameInput.value = hist.name;
         var container = document.getElementById('tierRows');
         while (container.firstChild) container.removeChild(container.firstChild);
         if (hist.tiers && hist.tiers.length > 0) {
             for (var i = 0; i < hist.tiers.length; i++) {
-                var t = hist.tiers[i];
-                addTierRow(t.label || '', t.amount || '', t.paypayLink || '');
+                addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].paypayLink || '');
             }
         } else { addTierRow('男子', '', ''); addTierRow('女子', '', ''); }
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        nameInput.style.transition = 'background 0.3s';
-        nameInput.style.background = '#e8f5e9';
-        setTimeout(function() { nameInput.style.background = ''; }, 1500);
+        if (nameInput) { nameInput.style.transition = 'background 0.3s'; nameInput.style.background = '#e8f5e9'; setTimeout(function() { nameInput.style.background = ''; }, 1500); }
     }
 
     function renderHistory() {
@@ -457,13 +454,9 @@
             var card = document.createElement('div');
             card.className = 'history-card' + (h.done ? ' done' : '');
             // 済チェックボタン
-            (function(hid) {
-                    e.stopPropagation();
-                });
-            })(h.id);
             // アイコン
             var icon = document.createElement('span');
-            icon.className = 'h-icon'; icon.textContent = h.done ? '✅' : '💰';
+            icon.className = 'h-icon'; icon.textContent = h.done ? '\u2705' : '\uD83D\uDCB0';
             icon.style.cursor = 'pointer'; icon.title = h.done ? 'タップで済を解除' : 'タップで済にする';
             (function(hid) { icon.addEventListener('click', function(e) { e.stopPropagation(); toggleHistoryDone(hid); }); })(h.id);
             // 情報部分
@@ -511,13 +504,12 @@
             if (h.tiers && h.tiers.length > 0) {
                 var tplBtn = document.createElement('button');
                 tplBtn.className = 'h-del-btn';
-                tplBtn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;font-size:11px;width:auto;padding:0 8px;border-radius:8px;color:#1976d2';
-                tplBtn.textContent = '📋';
+                tplBtn.style.cssText = 'background:#e3f2fd;font-size:11px;width:auto;padding:0 8px;border-radius:8px;color:#1976d2';
+                tplBtn.textContent = '\uD83D\uDCCB';
                 tplBtn.title = 'この設定で新規作成';
                 (function(hist) { tplBtn.addEventListener('click', function(e) { e.stopPropagation(); applyTemplate(hist); }); })(h);
                 actionsDiv.appendChild(tplBtn);
             }
-            card.appendChild(icon);
             card.appendChild(icon);
             card.appendChild(info);
             card.appendChild(actionsDiv);
@@ -672,7 +664,7 @@
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(text).then(function() {
                         var orig = btn.textContent;
-                        btn.textContent = '✅ コピー済み';
+                        btn.textContent = '\u2705 コピー済み';
                         setTimeout(function() { btn.textContent = orig; }, 2000);
                     });
                 } else {
@@ -681,7 +673,7 @@
                     ta.select(); document.execCommand('copy');
                     document.body.removeChild(ta);
                     var orig = btn.textContent;
-                    btn.textContent = '✅ コピー済み';
+                    btn.textContent = '\u2705 コピー済み';
                     setTimeout(function() { btn.textContent = orig; }, 2000);
                 }
             }, 600);
@@ -723,12 +715,11 @@
 
 
 
-    // 長押しでコピー登録
     addLongPress('shareBtn', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
-        var eventName = eventData ? (eventData.name || '集金') : '集金';
-        return '💰 ' + eventName + '\n\n👇 参加・支払い報告はこちら\n' + url;
+        var evName = eventData ? (eventData.name || '集金') : '集金';
+        return '\uD83D\uDCB0 ' + evName + '\\n\\n\uD83D\uDC47 参加・支払い報告はこちら\\n' + url;
     });
     addLongPress('remindBtn', function() { return buildRemindMessage(); });
     addLongPress('remindBtnAll', function() { return buildRemindMessage(); });
@@ -1221,17 +1212,15 @@
             badge.textContent = '⏳ 未払い';
         }
         actionsDiv.appendChild(badge);
-
-        // 済バッジ長押しで支払い情報表示
         if (m.paid) {
             (function(member, badgeEl) {
                 var timer = null;
                 function showInfo() {
                     var info = [];
-                    if (member.paidAt) info.push('💰 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
-                    if (member.selfReported) info.push('📝 本人が自己申告');
-                    if (member.actionBy) info.push('👤 操作者: ' + member.actionBy);
-                    if (member.confirmed) info.push('✅ 幹事が確認済み');
+                    if (member.paidAt) info.push('\uD83D\uDCB0 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
+                    if (member.selfReported) info.push('\uD83D\uDCDD 本人が自己申告');
+                    if (member.actionBy) info.push('\uD83D\uDC64 操作者: ' + member.actionBy);
+                    if (member.confirmed) info.push('\u2705 幹事が確認済み');
                     if (info.length === 0) info.push('支払い済み');
                     alert(member.name + ' の支払い情報\n\n' + info.join('\n'));
                 }
