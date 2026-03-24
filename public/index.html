@@ -103,11 +103,12 @@
         .history-card.done .h-name { text-decoration: line-through; color: #999 }
         .history-card.done .h-icon { opacity: .5 }
         .history-card .h-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center }
-        .history-card .h-done-btn { width: 30px; height: 30px; border: 2px solid #ddd; border-radius: 50%; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all .2s; flex-shrink: 0 }
-        .history-card .h-done-btn:active { transform: scale(.9) }
-        .history-card.done .h-done-btn { background: #00b900; border-color: #00b900; color: #fff }
         .history-card .h-del-btn { width: 28px; height: 28px; border: none; border-radius: 8px; background: #ffeaea; color: #e74c3c; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s }
         .history-card .h-del-btn:active { opacity: .7; transform: scale(.9) }
+        .history-card .h-fav-btn { width: 28px; height: 28px; border: none; border-radius: 8px; background: #fff8e1; color: #ffc107; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s }
+        .history-card .h-fav-btn:active { transform: scale(.9) }
+        .history-card .h-fav-btn.active { background: #ffc107; color: #fff }
+        .history-card.favorited { border-color: #ffc107; box-shadow: 0 1px 4px rgba(255,193,7,.2) }
 
         /* ローディング画面 */
         .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center }
@@ -394,6 +395,20 @@
     function getHistory() {
         try { return JSON.parse(localStorage.getItem('collect_history') || '[]'); } catch(e) { return []; }
     }
+    // お気に入り管理
+    function getFavorites() {
+        try { return JSON.parse(localStorage.getItem('collect_favorites') || '[]'); } catch(e) { return []; }
+    }
+    function toggleFavorite(id) {
+        var favs = getFavorites();
+        var idx = favs.indexOf(id);
+        if (idx >= 0) favs.splice(idx, 1);
+        else favs.push(id);
+        try { localStorage.setItem('collect_favorites', JSON.stringify(favs)); } catch(e) {}
+        renderHistory();
+    }
+    function isFavorite(id) { return getFavorites().indexOf(id) >= 0; }
+
     function addToHistory(id, name, tiers) {
         var history = getHistory();
         // 重複防止（既存のdone状態を保持）
@@ -446,14 +461,19 @@
         section.classList.remove('hidden');
         while (list.firstChild) list.removeChild(list.firstChild);
         // 未完了→済の順にソート
+        var favs = getFavorites();
         var sorted = history.slice().sort(function(a, b) {
+            var aFav = favs.indexOf(a.id) >= 0 ? 1 : 0;
+            var bFav = favs.indexOf(b.id) >= 0 ? 1 : 0;
+            if (aFav !== bFav) return bFav - aFav;
             if (!!a.done === !!b.done) return 0;
             return a.done ? 1 : -1;
         });
         for (var i = 0; i < sorted.length; i++) {
             var h = sorted[i];
             var card = document.createElement('div');
-            card.className = 'history-card' + (h.done ? ' done' : '');
+            var isFav = favs.indexOf(h.id) >= 0;
+            card.className = 'history-card' + (h.done ? ' done' : '') + (isFav ? ' favorited' : '');
             // 済チェックボタン
             // アイコン
             var icon = document.createElement('span');
@@ -501,13 +521,20 @@
             // アクション部分
             var actionsDiv = document.createElement('div');
             actionsDiv.className = 'h-actions';
+            // お気に入りボタン
+            var favBtn = document.createElement('button');
+            favBtn.className = 'h-fav-btn' + (isFav ? ' active' : '');
+            favBtn.textContent = isFav ? '★' : '☆';
+            favBtn.title = isFav ? 'お気に入り解除' : 'お気に入り登録';
+            (function(hid) { favBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(hid); }); })(h.id);
+            actionsDiv.appendChild(favBtn);
             actionsDiv.appendChild(delBtn);
             if (h.tiers && h.tiers.length > 0) {
                 var tplBtn = document.createElement('button');
                 tplBtn.className = 'h-del-btn';
                 tplBtn.style.cssText = 'background:#e3f2fd;font-size:11px;width:auto;padding:0 8px;border-radius:8px;color:#1976d2';
-                tplBtn.textContent = '\uD83D\uDCCB';
-                tplBtn.title = 'この設定で新規作成';
+                tplBtn.textContent = '📋 複製';
+                tplBtn.title = 'この設定で新規集金を作成';
                 (function(hist) { tplBtn.addEventListener('click', function(e) { e.stopPropagation(); applyTemplate(hist); }); })(h);
                 actionsDiv.appendChild(tplBtn);
             }
