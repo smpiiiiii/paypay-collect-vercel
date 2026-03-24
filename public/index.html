@@ -637,16 +637,16 @@
 
 
     // ===== 割り勘連動スライダー =====
-    var splitCalcUI = document.getElementById('splitCalcUI');
-    var splitTotalInput = document.getElementById('splitTotal');
-    var splitSlidersDiv = document.getElementById('splitSliders');
-    var splitResultDiv = document.getElementById('splitResult');
+    var splitCalcUI = document.getElementById('splitCalcUI'); // 削除済み
+    var splitTotalInput = document.getElementById('evSplitTotal');
+    var splitSlidersDiv = document.getElementById('evSplitSliders');
+    var splitResultDiv = document.getElementById('evSplitSummary');
 
     function checkSplitMode() {
         var types = tierContainer.querySelectorAll('.tier-amount-type');
         var hasSplit = false;
         for (var i = 0; i < types.length; i++) { if (types[i].value === 'tbd') hasSplit = true; }
-        splitCalcUI.style.display = hasSplit ? 'block' : 'none';
+        if (splitCalcUI) splitCalcUI.style.display = hasSplit ? 'block' : 'none';
         if (hasSplit) updateSplitSliders();
     }
 
