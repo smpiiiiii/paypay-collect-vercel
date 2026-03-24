@@ -385,6 +385,7 @@
             } else {
                 amountInput.style.display = 'none'; amountInput.required = false; amountInput.value = '0';
             }
+            if (typeof checkSplitMode === 'function') checkSplitMode();
         });
         if (amountTypeVal && amountTypeVal !== 'fixed') {
             amountInput.style.display = 'none'; amountInput.required = false;
@@ -643,6 +644,102 @@
         xhr.send(JSON.stringify({ priceTiers: newTiers, adminToken: adminToken }));
     });
 
+
+    // ===== 割り勘連動スライダー =====
+    var splitCalcUI = document.getElementById('splitCalcUI');
+    var splitTotalInput = document.getElementById('splitTotal');
+    var splitSlidersDiv = document.getElementById('splitSliders');
+    var splitResultDiv = document.getElementById('splitResult');
+
+    function checkSplitMode() {
+        var types = tierContainer.querySelectorAll('.tier-amount-type');
+        var hasSplit = false;
+        for (var i = 0; i < types.length; i++) { if (types[i].value === 'split') hasSplit = true; }
+        splitCalcUI.style.display = hasSplit ? 'block' : 'none';
+        if (hasSplit) updateSplitSliders();
+    }
+
+    function updateSplitSliders() {
+        var rows = tierContainer.querySelectorAll('.tier-row');
+        splitSlidersDiv.innerHTML = '';
+        var tierNames = [];
+        for (var i = 0; i < rows.length; i++) {
+            var nameInput = rows[i].querySelector('.tier-name');
+            var typeSelect = rows[i].querySelector('.tier-amount-type');
+            if (typeSelect && typeSelect.value === 'split') {
+                tierNames.push({ name: nameInput.value || '区分' + (i+1), row: rows[i], index: i });
+            }
+        }
+        if (tierNames.length < 2) {
+            splitResultDiv.textContent = '※ 割り勘の区分が2つ以上必要です';
+            return;
+        }
+        for (var j = 0; j < tierNames.length; j++) {
+            var sr = document.createElement('div');
+            sr.className = 'split-row';
+            sr.innerHTML = '<label>' + tierNames[j].name + '</label><input type="range" min="0" max="100" value="' + Math.round(100/tierNames.length) + '" data-idx="' + j + '"><span class="split-val">¥0/人</span>';
+            splitSlidersDiv.appendChild(sr);
+        }
+        // スライダー連動
+        var sliders = splitSlidersDiv.querySelectorAll('input[type=range]');
+        for (var s = 0; s < sliders.length; s++) {
+            (function(idx) {
+                sliders[idx].addEventListener('input', function() { recalcSplit(tierNames, idx); });
+            })(s);
+        }
+        splitTotalInput.oninput = function() { recalcSplit(tierNames, -1); };
+        recalcSplit(tierNames, -1);
+    }
+
+    function recalcSplit(tierNames, changedIdx) {
+        var total = parseInt(splitTotalInput.value) || 0;
+        var sliders = splitSlidersDiv.querySelectorAll('input[type=range]');
+        var vals = splitSlidersDiv.querySelectorAll('.split-val');
+        if (sliders.length < 2) return;
+
+        // 連動: 変更したスライダー以外を調整
+        if (changedIdx >= 0 && sliders.length === 2) {
+            var otherIdx = changedIdx === 0 ? 1 : 0;
+            sliders[otherIdx].value = 100 - parseInt(sliders[changedIdx].value);
+        } else if (changedIdx >= 0 && sliders.length > 2) {
+            var sum = 0;
+            for (var i = 0; i < sliders.length; i++) sum += parseInt(sliders[i].value);
+            var diff = sum - 100;
+            if (diff !== 0) {
+                for (var j = 0; j < sliders.length; j++) {
+                    if (j !== changedIdx) {
+                        var newVal = Math.max(0, parseInt(sliders[j].value) - Math.round(diff / (sliders.length - 1)));
+                        sliders[j].value = newVal;
+                    }
+                }
+            }
+        }
+
+        // 各区分の1人あたり金額を計算
+        var numPerTier = [];
+        for (var k = 0; k < tierNames.length; k++) {
+            var countInput = tierNames[k].row.querySelector('.tier-count');
+            numPerTier.push(parseInt(countInput ? countInput.value : 0) || 1);
+        }
+
+        var totalParts = 0;
+        for (var p = 0; p < sliders.length; p++) totalParts += parseInt(sliders[p].value);
+        if (totalParts === 0) totalParts = 1;
+
+        var resultParts = [];
+        for (var m = 0; m < sliders.length; m++) {
+            var ratio = parseInt(sliders[m].value) / totalParts;
+            var tierTotal = Math.round(total * ratio);
+            var perPerson = numPerTier[m] > 0 ? Math.round(tierTotal / numPerTier[m]) : tierTotal;
+            vals[m].textContent = '¥' + perPerson.toLocaleString() + '/人';
+            resultParts.push(tierNames[m].name + ': ¥' + perPerson.toLocaleString() + '/人');
+            // 金額入力に反映
+            var amtInput = tierNames[m].row.querySelector('.tier-amount');
+            if (amtInput) amtInput.value = perPerson;
+        }
+        splitResultDiv.textContent = resultParts.join(' / ') + ' (合計: ¥' + total.toLocaleString() + ')';
+    }
+
     // ===== イベント作成 =====
     document.getElementById('createBtn').addEventListener('click', function() {
         var name = document.getElementById('cName').value.trim() || '集金';
@@ -764,9 +861,9 @@
         for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
         var tierInfo = '';
         if (tiers.length > 1) {
-            tierInfo = tiers.map(function(t) { return t.label + ': ¥' + (t.amount || 0).toLocaleString(); }).join(' / ');
+            tierInfo = tiers.map(function(t) { var al = (t.amountType === 'tbd') ? '未定' : (t.amountType === 'split') ? '割り勘' : '¥' + (t.amount || 0).toLocaleString(); return t.label + ': ' + al; }).join(' / ');
         } else if (tiers.length === 1) {
-            tierInfo = '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
+            tierInfo = (tiers[0].amountType === 'tbd') ? '金額未定' : (tiers[0].amountType === 'split') ? '割り勘' : '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
@@ -1070,7 +1167,8 @@
         for (var k = 0; k < tiers.length; k++) {
             var opt = document.createElement('option');
             opt.value = tiers[k].label || '';
-            opt.textContent = (tiers[k].label || '一般') + '（¥' + (tiers[k].amount || 0).toLocaleString() + '）';
+            var tierAmtLabel = (tiers[k].amountType === 'tbd') ? '未定' : (tiers[k].amountType === 'split') ? '割り勘' : '¥' + (tiers[k].amount || 0).toLocaleString();
+            opt.textContent = (tiers[k].label || '一般') + '（' + tierAmtLabel + '）';
             tierSelect.appendChild(opt);
         }
 
@@ -1260,7 +1358,8 @@
         // 料金区分バッジ
         var tierBadge = document.createElement('span');
         tierBadge.className = 'badge badge-tier';
-        tierBadge.textContent = (m.tier || '一般') + ' ¥' + (m.amount || 0).toLocaleString();
+        var mAmtLabel = (m.amount === 0 && eventData) ? (function() { var ti = (eventData.priceTiers || []).find(function(t) { return t.label === m.tier; }); return ti && ti.amountType === 'tbd' ? '未定' : ti && ti.amountType === 'split' ? '割り勘' : '¥0'; })() : '¥' + (m.amount || 0).toLocaleString();
+        tierBadge.textContent = (m.tier || '一般') + ' ' + mAmtLabel;
         meta.appendChild(tierBadge);
 
         // ステータスバッジ（3段階）
@@ -1472,7 +1571,8 @@
         if (options.length === 0) { alert('変更できる区分がありません'); return; }
         var msg = '「' + name + '」の区分を変更\n現在: ' + (currentTier || '一般') + '\n\n変更先を選んでください:\n';
         for (var i = 0; i < options.length; i++) {
-            msg += (i + 1) + '. ' + options[i].label + '（¥' + (options[i].amount || 0).toLocaleString() + '）\n';
+            var ctAmtLabel = (options[i].amountType === 'tbd') ? '未定' : (options[i].amountType === 'split') ? '割り勘' : '¥' + (options[i].amount || 0).toLocaleString();
+            msg += (i + 1) + '. ' + options[i].label + '（' + ctAmtLabel + '）\n';
         }
         var choice = prompt(msg, '1');
         if (!choice) return;
