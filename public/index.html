@@ -362,7 +362,7 @@
 
     // ===== 料金区分フォーム =====
     var tierContainer = document.getElementById('tierRows');
-    function addTierRow(label, amount, paypayLink) {
+    function addTierRow(label, amount, paypayLink, amountTypeVal) {
         var row = document.createElement('div');
         row.className = 'tier-row';
         var labelInput = document.createElement('input');
@@ -373,6 +373,22 @@
         amountInput.className = 'tier-amount';
         amountInput.inputMode = 'numeric'; amountInput.value = amount || '';
         amountInput.max = '9999999';
+        // 金額タイプ選択
+        var amountType = document.createElement('select');
+        amountType.className = 'tier-amount-type';
+        amountType.style.cssText = 'padding:8px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:11px;min-width:70px';
+        amountType.innerHTML = '<option value="fixed">金額指定</option><option value="tbd">未定</option><option value="split">割り勘</option>';
+        amountType.value = amountTypeVal || 'fixed';
+        amountType.addEventListener('change', function() {
+            if (amountType.value === 'fixed') {
+                amountInput.style.display = ''; amountInput.required = true; amountInput.placeholder = '金額';
+            } else {
+                amountInput.style.display = 'none'; amountInput.required = false; amountInput.value = '0';
+            }
+        });
+        if (amountTypeVal && amountTypeVal !== 'fixed') {
+            amountInput.style.display = 'none'; amountInput.required = false;
+        }
         var del = document.createElement('button');
         del.className = 'del-tier'; del.textContent = '✕'; del.type = 'button';
         del.addEventListener('click', function() {
@@ -381,13 +397,13 @@
         var paypayInput = document.createElement('input');
         paypayInput.type = 'url'; paypayInput.placeholder = 'PayPayリンク（任意）';
         paypayInput.className = 'tier-paypay'; paypayInput.value = paypayLink || '';
-        row.appendChild(labelInput); row.appendChild(amountInput); row.appendChild(del);
+        row.appendChild(labelInput); row.appendChild(amountType); row.appendChild(amountInput); row.appendChild(del);
         row.appendChild(paypayInput);
         tierContainer.appendChild(row);
     }
     // 初期行: 2つ
-    addTierRow('男子', '', ''); addTierRow('女子', '', '');
-    document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
+    addTierRow('男子', '', '', ''); addTierRow('女子', '', '', '');
+    document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', '', ''); });
 
 
 
@@ -445,9 +461,9 @@
         while (container.firstChild) container.removeChild(container.firstChild);
         if (hist.tiers && hist.tiers.length > 0) {
             for (var i = 0; i < hist.tiers.length; i++) {
-                addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].paypayLink || '');
+                addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].paypayLink || '', hist.tiers[i].amountType || 'fixed');
             }
-        } else { addTierRow('\u7537\u5B50', '', ''); addTierRow('\u5973\u5B50', '', ''); }
+        } else { addTierRow('\u7537\u5B50', '', '', ''); addTierRow('\u5973\u5B50', '', '', ''); }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (nameInput) { nameInput.style.transition = 'background 0.3s'; nameInput.style.background = '#e8f5e9'; setTimeout(function() { nameInput.style.background = ''; }, 1500); }
     }
@@ -640,7 +656,9 @@
             var tAmount = parseInt(amountInput.value) || 0;
             var tPaypay = (paypayInput.value || '').trim();
             if (tAmount > 9999999) tAmount = 9999999;
-            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay });
+            var tAmountType = rows[i].querySelector('.tier-amount-type');
+            var tType = tAmountType ? tAmountType.value : 'fixed';
+            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay, amountType: tType });
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
