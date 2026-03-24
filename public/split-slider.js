@@ -29,7 +29,7 @@
 
     // メインアプリからの呼び出し用
     window.initSplitSliders = function(eventData, getTiers) {
-        var container = document.getElementById('splitSliders');
+        var container = document.getElementById('evSplitSliders');
         if (!container || !eventData) return;
         container.innerHTML = '';
 
@@ -47,7 +47,7 @@
         }).filter(function(t) { return t.count > 0; });
 
         // 合計金額が未入力なら現在の合計を初期値に
-        var totalInput = document.getElementById('splitTotal');
+        var totalInput = document.getElementById('evSplitTotal');
         if (!splitTotal && totalInput) {
             var currentTotal = 0;
             splitTiers.forEach(function(t) { currentTotal += t.amount * t.count; });
@@ -61,7 +61,7 @@
     };
 
     function renderSliders() {
-        var container = document.getElementById('splitSliders');
+        var container = document.getElementById('evSplitSliders');
         if (!container) return;
         container.innerHTML = '';
 
@@ -71,11 +71,17 @@
 
         var maxPerPerson = splitTotal;
 
+        // 2区分の場合は1本スライダー（連動）
+        if (splitTiers.length === 2) {
+            renderLinkedSlider(container, maxPerPerson);
+            return;
+        }
+
+        // 3区分以上は個別スライダー
         splitTiers.forEach(function(tier, idx) {
             var div = document.createElement('div');
             div.className = 'split-tier';
 
-            // ヘッダー
             var header = document.createElement('div');
             header.className = 'split-tier-header';
             var labelSpan = document.createElement('span');
@@ -87,19 +93,16 @@
             header.appendChild(labelSpan);
             header.appendChild(peopleSpan);
 
-            // 金額表示
             var amountDiv = document.createElement('div');
             amountDiv.className = 'split-tier-amount';
             amountDiv.id = 'splitAmt_' + idx;
             amountDiv.textContent = '¥' + (tier.amount || 0).toLocaleString() + '/人';
 
-            // 小計
             var subtotalDiv = document.createElement('div');
             subtotalDiv.className = 'split-tier-subtotal';
             subtotalDiv.id = 'splitSub_' + idx;
             subtotalDiv.textContent = '小計: ¥' + ((tier.amount || 0) * tier.count).toLocaleString();
 
-            // スライダー
             var slider = document.createElement('input');
             slider.type = 'range';
             slider.className = 'split-slider';
@@ -127,6 +130,63 @@
         updateDisplay();
     }
 
+    // 2区分専用: 1本スライダーで連動
+    function renderLinkedSlider(container, maxPerPerson) {
+        var t0 = splitTiers[0];
+        var t1 = splitTiers[1];
+
+        // ラベル行（名前+人数）
+        var labelRow = document.createElement('div');
+        labelRow.style.cssText = 'display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#333;margin-bottom:2px';
+        labelRow.innerHTML = '<span>' + t0.label + ' (' + t0.count + '人)</span><span>' + t1.label + ' (' + t1.count + '人)</span>';
+        container.appendChild(labelRow);
+
+        // 1本スライダー
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.className = 'split-slider';
+        slider.min = '0';
+        slider.max = String(maxPerPerson);
+        slider.step = '100';
+        slider.value = String(t0.amount || Math.round(splitTotal / 2 / 100) * 100);
+        slider.style.cssText = 'width:100%;margin:8px 0;cursor:pointer;height:8px';
+        container.appendChild(slider);
+
+        // 金額表示行
+        var amtRow = document.createElement('div');
+        amtRow.style.cssText = 'display:flex;justify-content:space-between;font-size:18px;font-weight:900;color:#1565c0;margin-bottom:4px';
+        amtRow.innerHTML = '<span id="splitLinkedAmt0">-</span><span id="splitLinkedAmt1">-</span>';
+        container.appendChild(amtRow);
+
+        // 小計行
+        var subRow = document.createElement('div');
+        subRow.style.cssText = 'display:flex;justify-content:space-between;font-size:11px;color:#888';
+        subRow.innerHTML = '<span id="splitLinkedSub0">-</span><span id="splitLinkedSub1">-</span>';
+        container.appendChild(subRow);
+
+        function update() {
+            var a = parseInt(slider.value) || 0;
+            t0.amount = a;
+
+            // 残りを区分2に配分
+            var totalUsedByA = a * t0.count;
+            var remaining = splitTotal - totalUsedByA;
+            var b = t1.count > 0 ? Math.round(remaining / t1.count / 100) * 100 : 0;
+            if (b < 0) b = 0;
+            t1.amount = b;
+
+            document.getElementById('splitLinkedAmt0').textContent = '¥' + a.toLocaleString() + '/人';
+            document.getElementById('splitLinkedAmt1').textContent = '¥' + b.toLocaleString() + '/人';
+            document.getElementById('splitLinkedSub0').textContent = '小計: ¥' + (a * t0.count).toLocaleString();
+            document.getElementById('splitLinkedSub1').textContent = '小計: ¥' + (b * t1.count).toLocaleString();
+
+            updateDisplay();
+        }
+
+        slider.addEventListener('input', update);
+        update();
+    }
+
     function updateDisplay() {
         var allocated = 0;
 
@@ -139,8 +199,13 @@
             if (subEl) subEl.textContent = '小計: ¥' + subtotal.toLocaleString();
         });
 
+        // 連動スライダーの場合もallocatedを計算
+        if (!document.getElementById('splitAmt_0')) {
+            splitTiers.forEach(function(t) { allocated += t.amount * t.count; });
+        }
+
         // サマリー
-        var summaryEl = document.getElementById('splitSummary');
+        var summaryEl = document.getElementById('evSplitSummary');
         if (summaryEl) {
             summaryEl.innerHTML = '';
             var diff = splitTotal - allocated;
@@ -156,7 +221,7 @@
             summaryDiv.appendChild(detailDiv);
 
             var matchDiv = document.createElement('div');
-            if (diff === 0) {
+            if (Math.abs(diff) <= 100 * splitTiers.length) {
                 matchDiv.className = 'match';
                 matchDiv.textContent = '✅ 合計 ¥' + splitTotal.toLocaleString() + ' ぴったり！';
                 summaryDiv.style.background = 'linear-gradient(135deg, #e8f5e9, #c8e6c9)';
@@ -165,7 +230,7 @@
             } else {
                 matchDiv.className = 'mismatch';
                 var sign = diff > 0 ? '+' : '';
-                matchDiv.textContent = '⚠️ 差額: ' + sign + '¥' + diff.toLocaleString() + '（配分: ¥' + allocated.toLocaleString() + ' / 合計: ¥' + splitTotal.toLocaleString() + '）';
+                matchDiv.textContent = '⚠️ 差額: ' + sign + '¥' + diff.toLocaleString();
                 summaryDiv.style.background = 'linear-gradient(135deg, #fff3e0, #ffe8cc)';
                 summaryDiv.style.border = '1px solid #ffcc80';
                 summaryDiv.style.color = '#e65100';
@@ -175,7 +240,7 @@
         }
 
         // 確定ボタンの表示
-        var applyBtn = document.getElementById('splitApplyBtn');
+        var applyBtn = document.getElementById('evSplitApplyBtn');
         if (applyBtn) {
             var hasToken = false;
             try { hasToken = !!localStorage.getItem('collect_admin_' + location.pathname.split('/')[2]); } catch(e) {}
@@ -184,7 +249,7 @@
     }
 
     // 合計金額入力
-    var totalInput = document.getElementById('splitTotal');
+    var totalInput = document.getElementById('evSplitTotal');
     if (totalInput) {
         totalInput.addEventListener('input', function() {
             splitTotal = parseInt(this.value) || 0;
@@ -194,7 +259,6 @@
                 splitTiers.forEach(function(t) { totalPeople += t.count; });
                 var perPerson = Math.floor(splitTotal / totalPeople / 100) * 100;
                 splitTiers.forEach(function(t) { t.amount = perPerson; });
-                // 端数調整
                 var alloc = 0;
                 splitTiers.forEach(function(t) { alloc += t.amount * t.count; });
                 var rem = splitTotal - alloc;
@@ -202,12 +266,7 @@
                     var last = splitTiers[splitTiers.length - 1];
                     last.amount += Math.ceil(rem / last.count / 100) * 100;
                 }
-                // スライダー値を更新
-                splitTiers.forEach(function(t, idx) {
-                    var s = document.getElementById('splitSlider_' + idx);
-                    if (s) { s.max = String(splitTotal); s.value = String(t.amount); }
-                });
-                updateDisplay();
+                renderSliders();
             } else {
                 renderSliders();
             }
@@ -215,26 +274,26 @@
     }
 
     // 確定ボタン
-    var applyBtn = document.getElementById('splitApplyBtn');
+    var applyBtn = document.getElementById('evSplitApplyBtn');
     if (applyBtn) {
         applyBtn.addEventListener('click', function() {
             var eventId = location.pathname.split('/')[2];
             var adminToken = '';
             try { adminToken = localStorage.getItem('collect_admin_' + eventId) || ''; } catch(e) {}
-            if (!adminToken) { alert('❗ 幹事権限が必要です'); return; }
+            if (!adminToken) { alert('❗ 管理権限が必要です'); return; }
 
             var newTiers = splitTiers.map(function(t) {
-                return { label: t.label, amount: t.amount, paypayLink: '' };
+                return { label: t.label, amount: t.amount, amountType: 'fixed' };
             });
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', location.origin + '/api/update-tiers/' + eventId, true);
+            xhr.open('POST', location.origin + '/api/event/' + eventId + '/updateTiers', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     alert('✅ 金額を更新しました！');
                     location.reload();
                 } else if (xhr.status === 403) {
-                    alert('❗ 幹事権限がありません');
+                    alert('❗ 管理権限がありません');
                 }
             };
             xhr.onerror = function() { alert('通信エラー'); };
