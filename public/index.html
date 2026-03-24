@@ -940,7 +940,7 @@
         // 全員支払い済みなら完了ボタン表示（幹事のみ）
         var completeBtnDiv = document.getElementById('completeBtnDiv');
         if (completeBtnDiv) {
-            var allPaid = members.length > 0 && unpaidMembers.length === 0;
+            var allPaid = membersAll.length > 0 && unpaidMembers.length === 0;
             completeBtnDiv.classList.toggle('hidden', !(isAdmin && allPaid));
         }
 
