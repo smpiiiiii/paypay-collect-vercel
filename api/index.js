@@ -105,7 +105,8 @@ module.exports = async (req, res) => {
       const tierInfo = event.priceTiers.find(t => t.label === tier);
       const amount = tierInfo ? tierInfo.amount : (event.priceTiers[0]?.amount || 0);
       const addedBy = (body.addedBy || '').trim();
-      const isOrganizer = body.adminToken && body.adminToken === event.adminToken;
+      const isSelfJoin = !addedBy || addedBy === name;
+      const isOrganizer = isSelfJoin && body.adminToken && body.adminToken === event.adminToken;
       event.members.push({
         name, tier: tier || event.priceTiers[0]?.label || '一般',
         amount, paid: isOrganizer, selfReported: false, confirmed: isOrganizer,
