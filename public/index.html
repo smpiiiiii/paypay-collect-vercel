@@ -197,7 +197,7 @@
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
-            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
+            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 作成した端末から支払い確認・メンバー管理ができます。</div>
             <button class="btn btn-red" id="createBtn">✅ 作成する</button>
         </div>
 
@@ -211,7 +211,7 @@
     <!-- ===== イベントビュー ===== -->
     <div id="eventView" class="hidden">
         <!-- 幹事モードバナー -->
-        <div id="adminBanner" class="admin-banner hidden">🔓 幹事モードON — タップで確認チェック、🗑で参加者削除</div>
+        <div id="adminBanner" class="admin-banner hidden">🔓 タップで支払い確認、🗑で参加者削除</div>
 
         <!-- 幹事金額変更フォーム -->
         <div id="editTiersCard" class="edit-tiers-card hidden">
@@ -298,7 +298,7 @@
         <div id="remindBtnSimple" class="hidden" style="margin-top:6px">
             <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
-        <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
+        <div class="admin-toggle" id="adminToggle">🔐 管理</div>
         <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">💡 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
     </div>
@@ -941,7 +941,7 @@
     // ===== 幹事モード =====
     document.getElementById('adminToggle').addEventListener('click', function() {
         if (!adminToken) {
-            alert('❗ 幹事権限がありません\nイベントを作成した端末からのみ幹事モードを使えます。');
+            alert('❗ 管理権限がありません\nイベントを作成した端末からのみ操作できます。');
             return;
         }
         // サーバー側でトークンを検証
@@ -953,7 +953,7 @@
                 var data = JSON.parse(xhr.responseText);
                 if (data.valid) {
                     isAdmin = !isAdmin;
-                    self.textContent = isAdmin ? '🔓 幹事モードOFF' : '🔐 幹事モード';
+                    self.textContent = isAdmin ? '🔓 管理OFF' : '🔐 管理';
                     if (eventData) renderEvent();
                 } else {
                     adminToken = '';
@@ -1028,7 +1028,7 @@
         }
 
         // 幹事モードリンクの表示制御（トークンがない場合は非表示）
-        document.getElementById('adminToggle').style.display = adminToken ? '' : 'none';
+        document.getElementById('adminToggle').style.display = 'none';
             document.getElementById('adminHelpText').style.display = 'none';
             // 幹事は自動的に幹事モードON（表示はそのまま）
             if (adminToken) {
@@ -1513,7 +1513,7 @@
             if (xhr.status === 403) {
                 alert('❗ 幹事権限がありません');
                 isAdmin = false;
-                document.getElementById('adminToggle').textContent = '🔐 幹事モード';
+                document.getElementById('adminToggle').textContent = '🔐 管理';
                 document.getElementById('adminBanner').classList.add('hidden');
                 renderEvent();
                 return;
@@ -1533,7 +1533,7 @@
             if (xhr.status === 403) {
                 alert('❗ 幹事権限がありません');
                 isAdmin = false;
-                document.getElementById('adminToggle').textContent = '🔐 幹事モード';
+                document.getElementById('adminToggle').textContent = '🔐 管理';
                 document.getElementById('adminBanner').classList.add('hidden');
                 renderEvent();
                 return;
