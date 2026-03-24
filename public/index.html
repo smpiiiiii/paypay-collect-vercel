@@ -210,6 +210,7 @@
             </div>
             <div id="editTierRows"></div>
             <button class="btn btn-red" id="saveTiersBtn" style="margin-top:4px">✅ 金額を更新</button>
+            <span class="add-tier" id="addTierBtnEvent" style="display:block;text-align:center;margin-top:8px;cursor:pointer;color:#1976d2;font-size:13px">＋ 区分を追加</span>
         </div>
 
         <!-- 未払い催促ボタン（幹事モード時に表示） -->
@@ -1162,6 +1163,46 @@
                 editTierRows.appendChild(row);
             }
         }
+
+            // 区分追加ボタン
+            var addTierBtnEv = document.getElementById('addTierBtnEvent');
+            if (addTierBtnEv) {
+                addTierBtnEv.onclick = function() {
+                    var newLabel = prompt('新しい区分名を入力（例: 学生、子供）');
+                    if (!newLabel || !newLabel.trim()) return;
+                    newLabel = newLabel.trim();
+                    // 既存の区分と重複チェック
+                    var existingTiers = getTiers();
+                    for (var t = 0; t < existingTiers.length; t++) {
+                        if (existingTiers[t].label === newLabel) {
+                            alert('その区分名は既に存在します');
+                            return;
+                        }
+                    }
+                    // APIで区分追加
+                    var xhr2 = new XMLHttpRequest();
+                    xhr2.open('POST', API + '/api/update', true);
+                    xhr2.setRequestHeader('Content-Type', 'application/json');
+                    xhr2.onload = function() {
+                        if (xhr2.status === 200) {
+                            alert('✅ 区分「' + newLabel + '」を追加しました');
+                            loadEvent();
+                        } else {
+                            alert('区分追加に失敗: ' + xhr2.status);
+                        }
+                    };
+                    xhr2.onerror = function() { alert('通信エラー'); };
+                    var newTiers = existingTiers.slice();
+                    newTiers.push({ label: newLabel, amount: 0 });
+                    xhr2.send(JSON.stringify({
+                        id: eventId,
+                        adminToken: adminToken,
+                        priceTiers: newTiers.map(function(t) {
+                            return { label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '' };
+                        })
+                    }));
+                };
+            }
 
         // 未払い催促カードの表示制御
         var remindCard = document.getElementById('remindCard');
