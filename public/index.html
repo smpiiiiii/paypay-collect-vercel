@@ -221,8 +221,8 @@
             <h3 style="color:#e65100">📣 未払い催促</h3>
             <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.5">未払いの参加者リストをLINEグループに共有して催促できます。</div>
             <div id="unpaidPreview" style="font-size:12px;color:#333;margin-bottom:8px;background:#fff;padding:10px;border-radius:8px;line-height:1.6"></div>
-            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促</button>
-            <button class="btn btn-outline" id="remindCopyBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 催促文をコピー</button>
+            <button class="btn btn-remind" id="remindBtn">📣 LINE催促</button>
+            <button class="btn btn-outline" id="remindCopyBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 催促文コピー</button>
         </div>
 
 
@@ -576,7 +576,32 @@
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
-        var memo = (document.getElementById('createMemo') || {}).value || '';
+        var memo = (document.getElementById('cMemo').value || '').trim();
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/create', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                // 幹事トークンをlocalStorageに保存
+                if (data.adminToken) {
+                    try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
+                }
+                // 履歴に追加
+                addToHistory(data.id, name);
+                location.href = '/collect/' + data.id;
+            } else { alert('作成に失敗: ' + xhr.status); }
+        };
+        xhr.onerror = function() { alert('通信エラーが発生しました'); };
+        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo }));
+    });
+
+    // ===== 参加登録 =====
+    document.getElementById('joinBtn').addEventListener('click', function() {
+        var name = document.getElementById('joinName').value.trim();
+        var tier = document.getElementById('joinTier').value;
+        if (!name) { alert('名前を入力してください'); return; }
+        // 招待者名を取得
         var refName = '';
         try { refName = localStorage.getItem('collect_ref_' + eventId) || ''; } catch(e) {}
         var addedByName = myName || refName || '';
@@ -619,14 +644,17 @@
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
         // LINE共有が使える場合はLINE、それ以外はクリップボードにコピー
-        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
-        }
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text);
+        window.open(lineUrl, "_blank");
     });
+
+
 
     // URLコピーボタン
     document.getElementById('copyUrlBtn').addEventListener('click', function() {
-        var refName = myName || '';
+        var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '💰 ' + eventName + '\n\n👇 参加・支払い報告はこちら\n' + url;
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(function() {
@@ -689,18 +717,21 @@
     document.getElementById('remindBtn').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
-        }
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text);
+        window.open(lineUrl, "_blank");
     });
+
+
 
     // 催促文コピーボタン（詳細カード内）
     document.getElementById('remindCopyBtn').addEventListener('click', function() {
         var text = buildRemindMessage();
+        if (!text) { alert('未払いの参加者はいません🎉'); return; }
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(function() {
                 var btn = document.getElementById('remindCopyBtn');
                 btn.textContent = '✅ コピー済み';
-                setTimeout(function() { btn.textContent = '📋 催促文をコピー'; }, 2000);
+                setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
             });
         } else {
             var ta = document.createElement('textarea');
@@ -709,7 +740,7 @@
             document.body.removeChild(ta);
             var btn = document.getElementById('remindCopyBtn');
             btn.textContent = '✅ コピー済み';
-            setTimeout(function() { btn.textContent = '📋 催促文をコピー'; }, 2000);
+            setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
         }
     });
 
@@ -717,13 +748,16 @@
     document.getElementById('remindBtnAll').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
-        }
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text);
+        window.open(lineUrl, "_blank");
     });
+
+
 
     // 催促文コピーボタン（メイン画面）
     document.getElementById('remindCopyAll').addEventListener('click', function() {
         var text = buildRemindMessage();
+        if (!text) { alert('未払いの参加者はいません🎉'); return; }
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(function() {
                 var btn = document.getElementById('remindCopyAll');
