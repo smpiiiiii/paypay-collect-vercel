@@ -109,6 +109,12 @@
         .history-card .h-fav-btn:active { transform: scale(.9) }
         .history-card .h-fav-btn.active { background: #ffc107; color: #fff }
         .history-card.favorited { border-color: #ffc107; box-shadow: 0 1px 4px rgba(255,193,7,.2) }
+        #splitCalcUI { background: #1a2332; border: 1px solid #2a3f5f; border-radius: 12px; padding: 14px; margin: 10px 0; display: none }
+        #splitCalcUI .split-header { font-size: 13px; font-weight: bold; color: #64b5f6; margin-bottom: 10px }
+        #splitCalcUI .split-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #ccc }
+        #splitCalcUI .split-row label { min-width: 50px }
+        #splitCalcUI .split-row input[type=range] { flex: 1 }
+        #splitCalcUI .split-row .split-val { min-width: 70px; text-align: right; font-weight: bold; color: #fff }
 
         /* ローディング画面 */
         .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center }
@@ -362,7 +368,7 @@
 
     // ===== 料金区分フォーム =====
     var tierContainer = document.getElementById('tierRows');
-    function addTierRow(label, amount, paypayLink, amountTypeVal) {
+    function addTierRow(label, amount, amountTypeVal) {
         var row = document.createElement('div');
         row.className = 'tier-row';
         var labelInput = document.createElement('input');
@@ -373,11 +379,10 @@
         amountInput.className = 'tier-amount';
         amountInput.inputMode = 'numeric'; amountInput.value = amount || '';
         amountInput.max = '9999999';
-        // 金額タイプ選択
         var amountType = document.createElement('select');
         amountType.className = 'tier-amount-type';
-        amountType.style.cssText = 'padding:8px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:11px;min-width:70px';
-        amountType.innerHTML = '<option value="fixed">金額指定</option><option value="tbd">未定</option><option value="split">割り勘</option>';
+        amountType.style.cssText = 'padding:8px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:11px;min-width:80px';
+        amountType.innerHTML = '<option value="fixed">金額指定</option><option value="tbd">割り勘/未定</option>';
         amountType.value = amountTypeVal || 'fixed';
         amountType.addEventListener('change', function() {
             if (amountType.value === 'fixed') {
@@ -395,16 +400,12 @@
         del.addEventListener('click', function() {
             if (tierContainer.children.length > 1) row.remove();
         });
-        var paypayInput = document.createElement('input');
-        paypayInput.type = 'url'; paypayInput.placeholder = 'PayPayリンク（任意）';
-        paypayInput.className = 'tier-paypay'; paypayInput.value = paypayLink || '';
         row.appendChild(labelInput); row.appendChild(amountType); row.appendChild(amountInput); row.appendChild(del);
-        row.appendChild(paypayInput);
         tierContainer.appendChild(row);
     }
     // 初期行: 2つ
-    addTierRow('男子', '', '', ''); addTierRow('女子', '', '', '');
-    document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', '', ''); });
+    addTierRow('男子', '', ''); addTierRow('女子', '', '');
+    document.getElementById('addTierBtn').addEventListener('click', function() { addTierRow('', '', ''); });
 
 
 
@@ -454,7 +455,6 @@
         try { localStorage.setItem('collect_favorites', JSON.stringify(favs)); } catch(e) {}
         renderHistory();
     }
-
     function applyTemplate(hist) {
         var nameInput = document.getElementById('cName');
         if (nameInput) nameInput.value = hist.name;
@@ -462,13 +462,12 @@
         while (container.firstChild) container.removeChild(container.firstChild);
         if (hist.tiers && hist.tiers.length > 0) {
             for (var i = 0; i < hist.tiers.length; i++) {
-                addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].paypayLink || '', hist.tiers[i].amountType || 'fixed');
+                addTierRow(hist.tiers[i].label || '', hist.tiers[i].amount || '', hist.tiers[i].amountType || 'fixed');
             }
-        } else { addTierRow('\u7537\u5B50', '', '', ''); addTierRow('\u5973\u5B50', '', '', ''); }
+        } else { addTierRow('\u7537\u5B50', '', ''); addTierRow('\u5973\u5B50', '', ''); }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (nameInput) { nameInput.style.transition = 'background 0.3s'; nameInput.style.background = '#e8f5e9'; setTimeout(function() { nameInput.style.background = ''; }, 1500); }
     }
-
     function renderHistory() {
         var history = getHistory();
         var section = document.getElementById('historySection');
@@ -506,30 +505,30 @@
             meta.className = 'h-meta';
             var d = new Date(h.date);
             meta.textContent = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + ('0'+d.getMinutes()).slice(-2);
-            // 詳細情報表示
             if (h.stats && h.stats.total > 0) {
-                // 進捗: 2/5人済 ¥10,000
                 var progressSpan = document.createElement('span');
                 progressSpan.style.cssText = 'display:block;font-size:10px;color:#333;margin-top:2px;font-weight:600';
-                var pct = Math.round(h.stats.paid / h.stats.total * 100);
                 progressSpan.textContent = '\u2705 ' + h.stats.paid + '/' + h.stats.total + '人済 (\u00A5' + h.stats.paidAmt.toLocaleString() + '/' + h.stats.totalAmt.toLocaleString() + ')';
-                if (pct === 100) progressSpan.style.color = '#2e7d32';
+                if (h.stats.paid === h.stats.total) progressSpan.style.color = '#2e7d32';
                 meta.appendChild(progressSpan);
-                // 区分ごと
                 if (h.tiers && h.tiers.length > 1) {
                     var tierDiv = document.createElement('span');
                     tierDiv.style.cssText = 'display:block;font-size:9px;color:#888;margin-top:1px';
                     tierDiv.textContent = h.tiers.map(function(t) {
                         var tc = h.stats.tierCounts && h.stats.tierCounts[t.label];
                         var cnt = tc ? tc.count + '人' : '';
-                        return t.label + ' \u00A5' + (t.amount || 0).toLocaleString() + (cnt ? '(' + cnt + ')' : '');
+                        var al = (t.amountType === 'tbd') ? '割り勘/未定' : '\u00A5' + (t.amount || 0).toLocaleString();
+                        return t.label + ' ' + al + (cnt ? '(' + cnt + ')' : '');
                     }).join(' / ');
                     meta.appendChild(tierDiv);
                 }
             } else if (h.tiers && h.tiers.length > 0) {
                 var tierSpan = document.createElement('span');
                 tierSpan.style.cssText = 'display:block;font-size:9px;color:#666;margin-top:1px';
-                tierSpan.textContent = h.tiers.map(function(t) { return t.label + ' \u00A5' + (t.amount || 0).toLocaleString(); }).join(' / ');
+                tierSpan.textContent = h.tiers.map(function(t) {
+                    var al = (t.amountType === 'tbd') ? '割り勘/未定' : '\u00A5' + (t.amount || 0).toLocaleString();
+                    return t.label + ' ' + al;
+                }).join(' / ');
                 meta.appendChild(tierSpan);
             }
             if (h.done) {
@@ -654,7 +653,7 @@
     function checkSplitMode() {
         var types = tierContainer.querySelectorAll('.tier-amount-type');
         var hasSplit = false;
-        for (var i = 0; i < types.length; i++) { if (types[i].value === 'split') hasSplit = true; }
+        for (var i = 0; i < types.length; i++) { if (types[i].value === 'tbd') hasSplit = true; }
         splitCalcUI.style.display = hasSplit ? 'block' : 'none';
         if (hasSplit) updateSplitSliders();
     }
@@ -666,26 +665,23 @@
         for (var i = 0; i < rows.length; i++) {
             var nameInput = rows[i].querySelector('.tier-name');
             var typeSelect = rows[i].querySelector('.tier-amount-type');
-            if (typeSelect && typeSelect.value === 'split') {
+            if (typeSelect && typeSelect.value === 'tbd') {
                 tierNames.push({ name: nameInput.value || '区分' + (i+1), row: rows[i], index: i });
             }
         }
         if (tierNames.length < 2) {
-            splitResultDiv.textContent = '※ 割り勘の区分が2つ以上必要です';
+            splitResultDiv.textContent = '合計金額を入力すると自動計算します';
             return;
         }
         for (var j = 0; j < tierNames.length; j++) {
             var sr = document.createElement('div');
             sr.className = 'split-row';
-            sr.innerHTML = '<label>' + tierNames[j].name + '</label><input type="range" min="0" max="100" value="' + Math.round(100/tierNames.length) + '" data-idx="' + j + '"><span class="split-val">¥0/人</span>';
+            sr.innerHTML = '<label>' + tierNames[j].name + '</label><input type="range" min="0" max="100" value="' + Math.round(100/tierNames.length) + '" data-idx="' + j + '"><span class="split-val">\u00A50/人</span>';
             splitSlidersDiv.appendChild(sr);
         }
-        // スライダー連動
         var sliders = splitSlidersDiv.querySelectorAll('input[type=range]');
         for (var s = 0; s < sliders.length; s++) {
-            (function(idx) {
-                sliders[idx].addEventListener('input', function() { recalcSplit(tierNames, idx); });
-            })(s);
+            (function(idx) { sliders[idx].addEventListener('input', function() { recalcSplit(tierNames, idx); }); })(s);
         }
         splitTotalInput.oninput = function() { recalcSplit(tierNames, -1); };
         recalcSplit(tierNames, -1);
@@ -696,48 +692,23 @@
         var sliders = splitSlidersDiv.querySelectorAll('input[type=range]');
         var vals = splitSlidersDiv.querySelectorAll('.split-val');
         if (sliders.length < 2) return;
-
-        // 連動: 変更したスライダー以外を調整
         if (changedIdx >= 0 && sliders.length === 2) {
             var otherIdx = changedIdx === 0 ? 1 : 0;
             sliders[otherIdx].value = 100 - parseInt(sliders[changedIdx].value);
-        } else if (changedIdx >= 0 && sliders.length > 2) {
-            var sum = 0;
-            for (var i = 0; i < sliders.length; i++) sum += parseInt(sliders[i].value);
-            var diff = sum - 100;
-            if (diff !== 0) {
-                for (var j = 0; j < sliders.length; j++) {
-                    if (j !== changedIdx) {
-                        var newVal = Math.max(0, parseInt(sliders[j].value) - Math.round(diff / (sliders.length - 1)));
-                        sliders[j].value = newVal;
-                    }
-                }
-            }
         }
-
-        // 各区分の1人あたり金額を計算
-        var numPerTier = [];
-        for (var k = 0; k < tierNames.length; k++) {
-            var countInput = tierNames[k].row.querySelector('.tier-count');
-            numPerTier.push(parseInt(countInput ? countInput.value : 0) || 1);
-        }
-
         var totalParts = 0;
         for (var p = 0; p < sliders.length; p++) totalParts += parseInt(sliders[p].value);
         if (totalParts === 0) totalParts = 1;
-
         var resultParts = [];
         for (var m = 0; m < sliders.length; m++) {
             var ratio = parseInt(sliders[m].value) / totalParts;
-            var tierTotal = Math.round(total * ratio);
-            var perPerson = numPerTier[m] > 0 ? Math.round(tierTotal / numPerTier[m]) : tierTotal;
-            vals[m].textContent = '¥' + perPerson.toLocaleString() + '/人';
-            resultParts.push(tierNames[m].name + ': ¥' + perPerson.toLocaleString() + '/人');
-            // 金額入力に反映
+            var perPerson = Math.round(total * ratio);
+            vals[m].textContent = '\u00A5' + perPerson.toLocaleString() + '/人';
+            resultParts.push(tierNames[m].name + ': \u00A5' + perPerson.toLocaleString() + '/人');
             var amtInput = tierNames[m].row.querySelector('.tier-amount');
             if (amtInput) amtInput.value = perPerson;
         }
-        splitResultDiv.textContent = resultParts.join(' / ') + ' (合計: ¥' + total.toLocaleString() + ')';
+        if (total > 0) splitResultDiv.textContent = resultParts.join(' / ') + ' (合計: \u00A5' + total.toLocaleString() + ')';
     }
 
     // ===== イベント作成 =====
@@ -753,9 +724,7 @@
             var tAmount = parseInt(amountInput.value) || 0;
             var tPaypay = (paypayInput.value || '').trim();
             if (tAmount > 9999999) tAmount = 9999999;
-            var tAmountType = rows[i].querySelector('.tier-amount-type');
-            var tType = tAmountType ? tAmountType.value : 'fixed';
-            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay, amountType: tType });
+            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay });
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
@@ -861,9 +830,9 @@
         for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
         var tierInfo = '';
         if (tiers.length > 1) {
-            tierInfo = tiers.map(function(t) { var al = (t.amountType === 'tbd') ? '未定' : (t.amountType === 'split') ? '割り勘' : '¥' + (t.amount || 0).toLocaleString(); return t.label + ': ' + al; }).join(' / ');
+            tierInfo = tiers.map(function(t) { var al = (t.amountType === 'tbd') ? '割り勘/未定' : '¥' + (t.amount || 0).toLocaleString(); return t.label + ': ' + al; }).join(' / ');
         } else if (tiers.length === 1) {
-            tierInfo = (tiers[0].amountType === 'tbd') ? '金額未定' : (tiers[0].amountType === 'split') ? '割り勘' : '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
+            tierInfo = (tiers[0].amountType === 'tbd') ? '割り勘/未定' : '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
@@ -1167,7 +1136,7 @@
         for (var k = 0; k < tiers.length; k++) {
             var opt = document.createElement('option');
             opt.value = tiers[k].label || '';
-            var tierAmtLabel = (tiers[k].amountType === 'tbd') ? '未定' : (tiers[k].amountType === 'split') ? '割り勘' : '¥' + (tiers[k].amount || 0).toLocaleString();
+            var tierAmtLabel = (tiers[k].amountType === 'tbd') ? '割り勘/未定' : '¥' + (tiers[k].amount || 0).toLocaleString();
             opt.textContent = (tiers[k].label || '一般') + '（' + tierAmtLabel + '）';
             tierSelect.appendChild(opt);
         }
@@ -1358,7 +1327,7 @@
         // 料金区分バッジ
         var tierBadge = document.createElement('span');
         tierBadge.className = 'badge badge-tier';
-        var mAmtLabel = (m.amount === 0 && eventData) ? (function() { var ti = (eventData.priceTiers || []).find(function(t) { return t.label === m.tier; }); return ti && ti.amountType === 'tbd' ? '未定' : ti && ti.amountType === 'split' ? '割り勘' : '¥0'; })() : '¥' + (m.amount || 0).toLocaleString();
+        var mAmtLabel = (m.amount === 0 && eventData) ? (function() { var ti = (eventData.priceTiers || []).find(function(t) { return t.label === m.tier; }); return (ti && ti.amountType === 'tbd') ? '割り勘/未定' : '¥0'; })() : '¥' + (m.amount || 0).toLocaleString();
         tierBadge.textContent = (m.tier || '一般') + ' ' + mAmtLabel;
         meta.appendChild(tierBadge);
 
@@ -1571,7 +1540,7 @@
         if (options.length === 0) { alert('変更できる区分がありません'); return; }
         var msg = '「' + name + '」の区分を変更\n現在: ' + (currentTier || '一般') + '\n\n変更先を選んでください:\n';
         for (var i = 0; i < options.length; i++) {
-            var ctAmtLabel = (options[i].amountType === 'tbd') ? '未定' : (options[i].amountType === 'split') ? '割り勘' : '¥' + (options[i].amount || 0).toLocaleString();
+            var ctAmtLabel = (options[i].amountType === 'tbd') ? '割り勘/未定' : '¥' + (options[i].amount || 0).toLocaleString();
             msg += (i + 1) + '. ' + options[i].label + '（' + ctAmtLabel + '）\n';
         }
         var choice = prompt(msg, '1');
