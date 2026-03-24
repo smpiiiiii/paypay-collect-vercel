@@ -390,7 +390,7 @@
     function getHistory() {
         try { return JSON.parse(localStorage.getItem('collect_history') || '[]'); } catch(e) { return []; }
     }
-    function addToHistory(id, name) {
+    function addToHistory(id, name, tiers) {
         var history = getHistory();
         // 重複防止（既存のdone状態を保持）
         var existing = null;
@@ -399,7 +399,7 @@
         }
         var done = existing ? !!existing.done : false;
         history = history.filter(function(h) { return h.id !== id; });
-        history.unshift({ id: id, name: name, date: new Date().toISOString(), done: done });
+        history.unshift({ id: id, name: name, date: new Date().toISOString(), done: done, tiers: tiers || (existing ? existing.tiers : null) });
         // 最大20件
         if (history.length > 20) history = history.slice(0, 20);
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
@@ -420,6 +420,31 @@
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
         renderHistory();
     }
+    // テンプレート適用機能
+    function applyTemplate(hist) {
+        // イベント名をセット
+        var nameInput = document.getElementById('createName');
+        if (nameInput) nameInput.value = hist.name;
+        // 既存の区分行をクリア
+        var container = document.getElementById('tierRows');
+        while (container.firstChild) container.removeChild(container.firstChild);
+        // テンプレートの区分を適用
+        if (hist.tiers && hist.tiers.length > 0) {
+            for (var i = 0; i < hist.tiers.length; i++) {
+                var t = hist.tiers[i];
+                addTierRow(t.label || '', t.amount || '', t.paypayLink || '');
+            }
+        } else {
+            addTierRow('男子', '', ''); addTierRow('女子', '', '');
+        }
+        // 作成フォームにスクロール
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // フィードバック
+        nameInput.style.transition = 'background 0.3s';
+        nameInput.style.background = '#e8f5e9';
+        setTimeout(function() { nameInput.style.background = ''; }, 1500);
+    }
+
     function renderHistory() {
         var history = getHistory();
         var section = document.getElementById('historySection');
@@ -460,6 +485,12 @@
             meta.className = 'h-meta';
             var d = new Date(h.date);
             meta.textContent = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + ('0'+d.getMinutes()).slice(-2);
+            if (h.tiers && h.tiers.length > 0) {
+                var tierSpan = document.createElement('span');
+                tierSpan.style.cssText = 'display:block;font-size:9px;color:#666;margin-top:1px';
+                tierSpan.textContent = h.tiers.map(function(t) { return t.label + ' \u00A5' + (t.amount || 0).toLocaleString(); }).join(' / ');
+                meta.appendChild(tierSpan);
+            }
             if (h.done) {
                 var doneBadge = document.createElement('span');
                 doneBadge.style.cssText = 'background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:6px;font-weight:700;margin-left:6px';
@@ -486,6 +517,21 @@
             var actionsDiv = document.createElement('div');
             actionsDiv.className = 'h-actions';
             actionsDiv.appendChild(delBtn);
+            // テンプレートとして使用ボタン
+            if (h.tiers && h.tiers.length > 0) {
+                var tplBtn = document.createElement('button');
+                tplBtn.className = 'h-done-btn';
+                tplBtn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;font-size:11px;width:auto;padding:0 8px;border-radius:8px';
+                tplBtn.textContent = '📋';
+                tplBtn.title = 'この設定で新規作成';
+                (function(hist) {
+                    tplBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        applyTemplate(hist);
+                    });
+                })(h);
+                actionsDiv.appendChild(tplBtn);
+            }
             card.appendChild(doneBtn);
             card.appendChild(icon);
             card.appendChild(info);
@@ -587,7 +633,7 @@
                     try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
                 }
                 // 履歴に追加
-                addToHistory(data.id, name);
+                addToHistory(data.id, name, tiers);
                 location.href = '/collect/' + data.id;
             } else { alert('作成に失敗: ' + xhr.status); }
         };
@@ -810,7 +856,7 @@
                     return;
                 }
                 // 履歴に追加
-                if (eventData && eventData.name) addToHistory(eventId, eventData.name);
+                if (eventData && eventData.name) addToHistory(eventId, eventData.name, eventData.priceTiers || null);
                 renderEvent();
             }
             else { location.href = '/'; }
