@@ -1163,20 +1163,35 @@
             })(m.name, m.tier);
             actionsDiv.appendChild(changeBtn);
         }
-        // 自己申告ボタン: 未払いかつ（自分 OR 自分が追加した人）
-        if (!m.paid && myName && (m.name === myName || m.addedBy === myName)) {
-            var reportBtn = document.createElement('button');
-            reportBtn.className = 'btn-sm btn-orange';
-            reportBtn.textContent = '💸 申告';
-            reportBtn.style.marginLeft = '4px';
+        // 支払い済みボタン: 未払いの人に対して誰でも押せる
+        if (!m.paid && myName) {
+            var paidBtn = document.createElement('button');
+            paidBtn.className = 'btn-sm';
+            paidBtn.textContent = '💰 支払済';
+            paidBtn.style.cssText = 'margin-left:4px;background:#00b894;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
             (function(memberName, memberAmount) {
-                reportBtn.addEventListener('click', function(e) {
+                paidBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    if (!confirm(memberName + 'さんの ¥' + (memberAmount || 0).toLocaleString() + ' を送金済みにしますか？')) return;
-                    selfReport(memberName);
+                    if (!confirm(memberName + ' を支払い済みにしますか？')) return;
+                    togglePaid(memberName, true);
                 });
             })(m.name, m.amount);
-            actionsDiv.appendChild(reportBtn);
+            actionsDiv.appendChild(paidBtn);
+        }
+        // 未払いに戻すボタン: 支払い済みの人に対して誰でも押せる（幹事確認済みは除く）
+        if (m.paid && myName && !m.confirmed) {
+            var unpaidBtn = document.createElement('button');
+            unpaidBtn.className = 'btn-sm';
+            unpaidBtn.textContent = '↩ 取消';
+            unpaidBtn.style.cssText = 'margin-left:4px;background:#ff6b6b;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
+            (function(memberName) {
+                unpaidBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!confirm(memberName + ' を未払いに戻しますか？')) return;
+                    togglePaid(memberName, false);
+                });
+            })(m.name);
+            actionsDiv.appendChild(unpaidBtn);
         }
 
         div.appendChild(check); div.appendChild(info); div.appendChild(actionsDiv);
@@ -1189,13 +1204,13 @@
         return div;
     }
 
-    // ===== 支払い状態切り替え（幹事用） =====
-    function togglePaid(name) {
+    // ===== 支払い状態切り替え（誰でも操作可能、履歴付き） =====
+    function togglePaid(name, newPaid) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', API + '/api/toggle/' + eventId, true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = function() { loadEvent(); };
-        xhr.send(JSON.stringify({ name: name }));
+        xhr.send(JSON.stringify({ name: name, paid: newPaid, actionBy: myName || '不明' }));
     }
 
     // ===== 自己申告 =====

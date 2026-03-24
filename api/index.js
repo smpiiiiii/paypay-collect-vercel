@@ -114,15 +114,36 @@ module.exports = async (req, res) => {
       return res.status(200).json({ status: 'ok' });
     }
 
-    // API: 支払い状態切り替え（幹事用）
+    // API: 支払い状態切り替え（誰でも操作可能、履歴記録あり）
     if (pathname.match(/^\/api\/toggle\//) && req.method === 'POST') {
       const id = pathname.split('/')[3];
       const body = await parseBody(req);
       let event = await getEvent(id);
       if (!event) return res.status(404).json({ error: 'Not found' });
       if (typeof event === 'string') event = JSON.parse(event);
+      event = migrateEvent(event);
       const member = event.members.find(m => m.name === body.name);
-      if (member) { member.paid = !member.paid; member.paidAt = member.paid ? new Date().toISOString() : null; }
+      if (member) {
+        // paid を明示的に指定可能（指定なしならトグル）
+        const newPaid = body.paid !== undefined ? !!body.paid : !member.paid;
+        const oldPaid = member.paid;
+        member.paid = newPaid;
+        member.paidAt = newPaid ? new Date().toISOString() : null;
+        // 未払いに戻した場合、自己申告と幹事確認もリセット
+        if (!newPaid) {
+          member.selfReported = false;
+          member.confirmed = false;
+        }
+        // 操作履歴を記録
+        if (!Array.isArray(event.actionLog)) event.actionLog = [];
+        event.actionLog.push({
+          action: newPaid ? 'paid' : 'unpaid',
+          targetName: body.name,
+          actionBy: (body.actionBy || '不明').trim(),
+          timestamp: new Date().toISOString(),
+          note: oldPaid === newPaid ? '変更なし' : ''
+        });
+      }
       await saveEvent(id, event);
       return res.status(200).json({ status: 'ok' });
     }
