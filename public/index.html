@@ -281,12 +281,12 @@
             <div style="font-size:11px;color:#666;margin-bottom:8px;line-height:1.5">💡 合計金額を入力して、スライダーで各区分の1人あたり金額を調整できます。</div>
             <div class="split-total-input" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
                 <span style="font-size:14px;color:#666">合計</span>
-                <input type="number" id="splitTotal" placeholder="0" inputmode="numeric" style="flex:1;font-size:18px;font-weight:900;text-align:right;padding:10px 14px">
+                <input type="number" id="evSplitTotal" placeholder="0" inputmode="numeric" style="flex:1;font-size:18px;font-weight:900;text-align:right;padding:10px 14px">
                 <span style="font-size:14px;color:#666">円</span>
             </div>
-            <div id="splitSliders"></div>
-            <div id="splitSummary"></div>
-            <button class="btn btn-red" id="splitApplyBtn" style="margin-top:8px;display:none">✅ この金額で確定する</button>
+            <div id="evSplitSliders"></div>
+            <div id="evSplitSummary"></div>
+            <button class="btn btn-red" id="evSplitApplyBtn" style="margin-top:8px;display:none">✅ この金額で確定する</button>
         </div>
 
         <div class="share-btns">
@@ -936,6 +936,22 @@
         var total = 0;
         var ms = eventData ? (eventData.members || []) : [];
         for (var i = 0; i < ms.length; i++) total += (ms[i].amount || 0);
+        // 全員を確認済みにする
+        if (adminToken && eventData) {
+            var allMs = eventData.members || [];
+            var pending = 0;
+            for (var ci = 0; ci < allMs.length; ci++) {
+                if (!allMs[ci].confirmed) {
+                    pending++;
+                    (function(mName) {
+                        var cxhr = new XMLHttpRequest();
+                        cxhr.open('POST', API + '/api/event/' + eventId + '/confirm', true);
+                        cxhr.setRequestHeader('Content-Type', 'application/json');
+                        cxhr.send(JSON.stringify({ adminToken: adminToken, memberName: mName }));
+                    })(allMs[ci].name);
+                }
+            }
+        }
         alert('\uD83C\uDF89 集金完了！\n\n参加者: ' + ms.length + '人\n合計: \u00A5' + total.toLocaleString() + '\n\nお疲れ様でした！');
         toggleHistoryDone(eventId);
         if (confirm('トップ画面に戻りますか？')) { location.href = '/'; }
