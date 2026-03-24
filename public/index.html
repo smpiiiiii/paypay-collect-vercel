@@ -290,6 +290,7 @@
             <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
+        <div id="adminHelpText" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4">💡 企画者＝幹事です。幹事モードで支払い確認・メンバー管理ができます</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
     </div>
 </div>
@@ -889,6 +890,7 @@
 
         // 幹事モードリンクの表示制御（トークンがない場合は非表示）
         document.getElementById('adminToggle').style.display = adminToken ? '' : 'none';
+            document.getElementById('adminHelpText').style.display = adminToken ? '' : 'none';
 
         // 幹事モードバナー
         document.getElementById('adminBanner').classList.toggle('hidden', !isAdmin);
