@@ -850,46 +850,7 @@
     }
 
     // ===== 長押しでコピー機能 =====
-    function addLongPress(btnId, getTextFn) {
-        var btn = document.getElementById(btnId);
-        if (!btn) return;
-        var timer = null;
-        var longPressed = false;
-        function onStart(e) {
-            e.preventDefault();
-            longPressed = false;
-            timer = setTimeout(function() {
-                longPressed = true;
-                var text = getTextFn();
-                if (!text) return;
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text).then(function() {
-                        var orig = btn.textContent;
-                        btn.textContent = '\u2705 コピー済み';
-                        setTimeout(function() { btn.textContent = orig; }, 2000);
-                    });
-                } else {
-                    var ta = document.createElement('textarea');
-                    ta.value = text; document.body.appendChild(ta);
-                    ta.select(); document.execCommand('copy');
-                    document.body.removeChild(ta);
-                    var orig = btn.textContent;
-                    btn.textContent = '\u2705 コピー済み';
-                    setTimeout(function() { btn.textContent = orig; }, 2000);
-                }
-            }, 600);
-        }
-        function onEnd(e) {
-            clearTimeout(timer);
-            if (longPressed) { e.preventDefault(); e.stopPropagation(); }
-        }
-        btn.addEventListener('touchstart', onStart, { passive: false });
-        btn.addEventListener('touchend', onEnd);
-        btn.addEventListener('touchcancel', function() { clearTimeout(timer); });
-        btn.addEventListener('mousedown', onStart);
-        btn.addEventListener('mouseup', onEnd);
-        btn.addEventListener('mouseleave', function() { clearTimeout(timer); });
-    }
+    function addLongPress(btnId, getTextFn) { /* disabled - use copy button instead */ }
 
     // ===== 更新・共有 =====
     document.getElementById('refreshBtn').addEventListener('click', function() { loadEvent(); });
