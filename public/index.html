@@ -362,33 +362,12 @@
         var labelInput = document.createElement('input');
         labelInput.type = 'text'; labelInput.placeholder = '区分名（例: 男子）';
         labelInput.className = 'tier-name'; labelInput.value = label || '';
-        var amountInput = document.createElement('input');
-        amountInput.type = 'number'; amountInput.placeholder = '金額';
-        amountInput.className = 'tier-amount';
-        amountInput.inputMode = 'numeric'; amountInput.value = amount || '';
-        amountInput.max = '9999999';
-        var amountType = document.createElement('select');
-        amountType.className = 'tier-amount-type';
-        amountType.style.cssText = 'padding:8px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:11px;min-width:80px';
-        amountType.innerHTML = '<option value="fixed">金額指定</option><option value="tbd">割り勘/未定</option>';
-        amountType.value = amountTypeVal || 'fixed';
-        amountType.addEventListener('change', function() {
-            if (amountType.value === 'fixed') {
-                amountInput.style.display = ''; amountInput.required = true; amountInput.placeholder = '金額';
-            } else {
-                amountInput.style.display = 'none'; amountInput.required = false; amountInput.value = '0';
-            }
-            // checkSplitMode disabled
-        });
-        if (amountTypeVal && amountTypeVal !== 'fixed') {
-            amountInput.style.display = 'none'; amountInput.required = false;
-        }
         var del = document.createElement('button');
         del.className = 'del-tier'; del.textContent = '✕'; del.type = 'button';
         del.addEventListener('click', function() {
             if (tierContainer.children.length > 1) row.remove();
         });
-        row.appendChild(labelInput); row.appendChild(amountType); row.appendChild(amountInput); row.appendChild(del);
+        row.appendChild(labelInput); row.appendChild(del);
         tierContainer.appendChild(row);
     }
     // 初期行: 2つ

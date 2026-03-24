@@ -116,6 +116,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({ status: 'ok' });
     }
 
+    // API: イベント更新（区分追加・金額変更）— 幹事のみ
+    if (pathname === '/api/update' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const id = body.id;
+      if (!id) return res.status(400).json({ error: 'ID required' });
+      let event = await getEvent(id);
+      if (!event) return res.status(404).json({ error: 'Not found' });
+      if (typeof event === 'string') event = JSON.parse(event);
+      event = migrateEvent(event);
+      if (body.adminToken !== event.adminToken) return res.status(403).json({ error: 'Unauthorized' });
+      if (Array.isArray(body.priceTiers) && body.priceTiers.length > 0) {
+        event.priceTiers = body.priceTiers.filter(t => t.label).map(t => ({
+          label: t.label, amount: t.amount || 0, paypayLink: t.paypayLink || '', amountType: t.amountType || 'fixed'
+        }));
+      }
+      await saveEvent(id, event);
+      return res.status(200).json({ status: 'ok' });
+    }
+
     // API: 支払い状態切り替え（誰でも操作可能、履歴記録あり）
     if (pathname.match(/^\/api\/toggle\//) && req.method === 'POST') {
       const id = pathname.split('/')[3];
