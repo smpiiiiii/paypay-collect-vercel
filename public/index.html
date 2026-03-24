@@ -195,6 +195,16 @@
             <div>
                 <label>💴 料金区分</label>
                 <div id="tierRows"></div>
+                <div id="splitCalcUI" style="display:none;background:#1a2332;border:1px solid #2a3f5f;border-radius:12px;padding:14px;margin:10px 0">
+                    <div style="font-size:13px;font-weight:bold;color:#64b5f6;margin-bottom:10px">💱 割り勘計算</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#ccc">
+                        <label style="min-width:40px">合計</label>
+                        <input type="number" id="splitTotal" placeholder="合計金額" inputmode="numeric" style="flex:1;padding:8px;border-radius:8px;border:1px solid #333;background:#111;color:#fff;font-size:14px">
+                        <span style="font-size:11px;color:#888">円</span>
+                    </div>
+                    <div id="splitSliders"></div>
+                    <div id="splitResult" style="font-size:11px;color:#888;margin-top:4px"></div>
+                </div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
             <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 作成した端末から支払い確認・メンバー管理ができます。</div>
@@ -952,9 +962,9 @@
                 }
             }
         }
-        alert('\uD83C\uDF89 集金完了！\n\n参加者: ' + ms.length + '人\n合計: \u00A5' + total.toLocaleString() + '\n\nお疲れ様でした！');
+        alert('\uD83C\uDF89 集金完了！\n\n参加者: ' + ms.length + '人\n合計: \u00A5' + total.toLocaleString());
         toggleHistoryDone(eventId);
-        if (confirm('トップ画面に戻りますか？')) { location.href = '/'; }
+        if (confirm('トップに戻りますか？')) { location.href = '/'; }
     });
 
     // ===== 幹事モード =====
@@ -1417,7 +1427,7 @@
                     if (member.paidAt) info.push('\uD83D\uDCB0 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
                     if (member.selfReported) info.push('\uD83D\uDCDD 本人が自己申告');
                     if (member.actionBy) info.push('\uD83D\uDC64 操作者: ' + member.actionBy);
-                    if (member.confirmed) info.push('\u2705 幹事が確認済み');
+                    if (member.confirmed) info.push('\u2705 確認OK');
                     if (info.length === 0) info.push('支払い済み');
                     alert(member.name + ' の支払い情報\n\n' + info.join('\n'));
                 }
