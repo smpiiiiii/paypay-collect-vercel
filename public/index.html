@@ -395,7 +395,7 @@
     function getHistory() {
         try { return JSON.parse(localStorage.getItem('collect_history') || '[]'); } catch(e) { return []; }
     }
-    function addToHistory(id, name, tiers) {
+    function addToHistory(id, name, tiers, stats) {
         var history = getHistory();
         // 重複防止（既存のdone状態を保持）
         var existing = null;
@@ -404,7 +404,7 @@
         }
         var done = existing ? !!existing.done : false;
         history = history.filter(function(h) { return h.id !== id; });
-        history.unshift({ id: id, name: name, date: new Date().toISOString(), done: done, tiers: tiers || (existing ? existing.tiers : null) });
+        history.unshift({ id: id, name: name, date: new Date().toISOString(), done: done, tiers: tiers || (existing ? existing.tiers : null), stats: stats || (existing ? existing.stats : null) });
         // 最大20件
         if (history.length > 20) history = history.slice(0, 20);
         try { localStorage.setItem('collect_history', JSON.stringify(history)); } catch(e) {}
@@ -489,7 +489,27 @@
             meta.className = 'h-meta';
             var d = new Date(h.date);
             meta.textContent = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + ('0'+d.getMinutes()).slice(-2);
-            if (h.tiers && h.tiers.length > 0) {
+            // 詳細情報表示
+            if (h.stats && h.stats.total > 0) {
+                // 進捗: 2/5人済 ¥10,000
+                var progressSpan = document.createElement('span');
+                progressSpan.style.cssText = 'display:block;font-size:10px;color:#333;margin-top:2px;font-weight:600';
+                var pct = Math.round(h.stats.paid / h.stats.total * 100);
+                progressSpan.textContent = '\u2705 ' + h.stats.paid + '/' + h.stats.total + '人済 (\u00A5' + h.stats.paidAmt.toLocaleString() + '/' + h.stats.totalAmt.toLocaleString() + ')';
+                if (pct === 100) progressSpan.style.color = '#2e7d32';
+                meta.appendChild(progressSpan);
+                // 区分ごと
+                if (h.tiers && h.tiers.length > 1) {
+                    var tierDiv = document.createElement('span');
+                    tierDiv.style.cssText = 'display:block;font-size:9px;color:#888;margin-top:1px';
+                    tierDiv.textContent = h.tiers.map(function(t) {
+                        var tc = h.stats.tierCounts && h.stats.tierCounts[t.label];
+                        var cnt = tc ? tc.count + '人' : '';
+                        return t.label + ' \u00A5' + (t.amount || 0).toLocaleString() + (cnt ? '(' + cnt + ')' : '');
+                    }).join(' / ');
+                    meta.appendChild(tierDiv);
+                }
+            } else if (h.tiers && h.tiers.length > 0) {
                 var tierSpan = document.createElement('span');
                 tierSpan.style.cssText = 'display:block;font-size:9px;color:#666;margin-top:1px';
                 tierSpan.textContent = h.tiers.map(function(t) { return t.label + ' \u00A5' + (t.amount || 0).toLocaleString(); }).join(' / ');
@@ -636,7 +656,7 @@
                     try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
                 }
                 // 履歴に追加
-                addToHistory(data.id, name, tiers);
+                addToHistory(data.id, name, tiers, null);
                 location.href = '/collect/' + data.id;
             } else { alert('作成に失敗: ' + xhr.status); }
         };
@@ -866,7 +886,20 @@
                     return;
                 }
                 // 履歴に追加
-                if (eventData && eventData.name) addToHistory(eventId, eventData.name, eventData.priceTiers || null);
+                if (eventData && eventData.name) {
+                    var ms = eventData.members || [];
+                    var st = { total: ms.length, paid: 0, totalAmt: 0, paidAmt: 0, tierCounts: {} };
+                    for (var si = 0; si < ms.length; si++) {
+                        var sm = ms[si];
+                        st.totalAmt += (sm.amount || 0);
+                        if (sm.paid) { st.paid++; st.paidAmt += (sm.amount || 0); }
+                        var tk = sm.tier || '一般';
+                        if (!st.tierCounts[tk]) st.tierCounts[tk] = { count: 0, paid: 0 };
+                        st.tierCounts[tk].count++;
+                        if (sm.paid) st.tierCounts[tk].paid++;
+                    }
+                    addToHistory(eventId, eventData.name, eventData.priceTiers || null, st);
+                }
                 renderEvent();
             }
             else { location.href = '/'; }
