@@ -74,6 +74,7 @@
         .msg { text-align: center; padding: 16px; color: #999; font-size: 12px }
         .share-btns { display: flex; gap: 8px; margin-top: 8px }
         .share-btns .btn { flex: 1; font-size: 12px; padding: 10px }
+        .btn-green::after, .btn-remind::after { content: "長押しでコピー"; display: block; font-size: 9px; opacity: 0.6; margin-top: 2px }
         .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
         .hidden { display: none }
 
@@ -221,8 +222,7 @@
             <h3 style="color:#e65100">📣 未払い催促</h3>
             <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.5">未払いの参加者リストをLINEグループに共有して催促できます。</div>
             <div id="unpaidPreview" style="font-size:12px;color:#333;margin-bottom:8px;background:#fff;padding:10px;border-radius:8px;line-height:1.6"></div>
-            <button class="btn btn-remind" id="remindBtn">📣 LINE催促</button>
-            <button class="btn btn-outline" id="remindCopyBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 催促文コピー</button>
+            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促する</button>
         </div>
 
 
@@ -284,11 +284,10 @@
         <div class="share-btns">
             <button class="btn btn-outline" id="refreshBtn">🔄 更新</button>
             <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
-            <button class="btn btn-outline" id="copyUrlBtn">📋 URLコピー</button>
         </div>
         <!-- 未払いがいる場合のみ表示される簡易催促ボタン（幹事でなくても使える） -->
         <div id="remindBtnSimple" class="hidden" style="margin-top:6px">
-            <div style="display:flex;gap:6px"><button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px;flex:1">📣 LINE催促</button><button class="btn btn-outline" id="remindCopyAll" style="font-size:12px;padding:10px;flex:1">📋 催促文コピー</button></div>
+            <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
@@ -626,6 +625,49 @@
         xhr.send(JSON.stringify({ name: name, tier: tier, addedBy: addedByName }));
     });
 
+
+    // ===== 長押しでコピー機能 =====
+    function addLongPress(btnId, getTextFn) {
+        var btn = document.getElementById(btnId);
+        if (!btn) return;
+        var timer = null;
+        var longPressed = false;
+        function onStart(e) {
+            longPressed = false;
+            timer = setTimeout(function() {
+                longPressed = true;
+                var text = getTextFn();
+                if (!text) return;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        var orig = btn.textContent;
+                        btn.textContent = '✅ コピー済み';
+                        setTimeout(function() { btn.textContent = orig; }, 2000);
+                    });
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = text; document.body.appendChild(ta);
+                    ta.select(); document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    var orig = btn.textContent;
+                    btn.textContent = '✅ コピー済み';
+                    setTimeout(function() { btn.textContent = orig; }, 2000);
+                }
+            }, 600);
+        }
+        function onEnd(e) {
+            clearTimeout(timer);
+            if (longPressed) { e.preventDefault(); e.stopPropagation(); }
+        }
+        btn.addEventListener('touchstart', onStart, { passive: true });
+        btn.addEventListener('touchend', onEnd);
+        btn.addEventListener('touchcancel', function() { clearTimeout(timer); });
+        // マウス操作にも対応
+        btn.addEventListener('mousedown', onStart);
+        btn.addEventListener('mouseup', onEnd);
+        btn.addEventListener('mouseleave', function() { clearTimeout(timer); });
+    }
+
     // ===== 更新・共有 =====
     document.getElementById('refreshBtn').addEventListener('click', function() { loadEvent(); });
     document.getElementById('shareBtn').addEventListener('click', function() {
@@ -650,28 +692,16 @@
 
 
 
-    // URLコピーボタン
-    document.getElementById('copyUrlBtn').addEventListener('click', function() {
+
+    // 長押しでURLコピー
+    addLongPress('shareBtn', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
         var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
         var eventName = eventData ? (eventData.name || '集金') : '集金';
-        var text = '💰 ' + eventName + '\n\n👇 参加・支払い報告はこちら\n' + url;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                var btn = document.getElementById('copyUrlBtn');
-                btn.textContent = '✅ コピー済み';
-                setTimeout(function() { btn.textContent = '📋 URLコピー'; }, 2000);
-            });
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = text; document.body.appendChild(ta);
-            ta.select(); document.execCommand('copy');
-            document.body.removeChild(ta);
-            var btn = document.getElementById('copyUrlBtn');
-            btn.textContent = '✅ コピー済み';
-            setTimeout(function() { btn.textContent = '📋 URLコピー'; }, 2000);
-        }
+        return '💰 ' + eventName + '\n\n👇 参加・支払い報告はこちら\n' + url;
     });
+    addLongPress('remindBtn', function() { return buildRemindMessage(); });
+    addLongPress('remindBtnAll', function() { return buildRemindMessage(); });
 
     // ===== 未払い催促機能 =====
     function buildRemindMessage() {
@@ -723,26 +753,6 @@
 
 
 
-    // 催促文コピーボタン（詳細カード内）
-    document.getElementById('remindCopyBtn').addEventListener('click', function() {
-        var text = buildRemindMessage();
-        if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                var btn = document.getElementById('remindCopyBtn');
-                btn.textContent = '✅ コピー済み';
-                setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
-            });
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = text; document.body.appendChild(ta);
-            ta.select(); document.execCommand('copy');
-            document.body.removeChild(ta);
-            var btn = document.getElementById('remindCopyBtn');
-            btn.textContent = '✅ コピー済み';
-            setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
-        }
-    });
 
     // 全員向け催促ボタン
     document.getElementById('remindBtnAll').addEventListener('click', function() {
@@ -754,26 +764,6 @@
 
 
 
-    // 催促文コピーボタン（メイン画面）
-    document.getElementById('remindCopyAll').addEventListener('click', function() {
-        var text = buildRemindMessage();
-        if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                var btn = document.getElementById('remindCopyAll');
-                btn.textContent = '✅ コピー済み';
-                setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
-            });
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = text; document.body.appendChild(ta);
-            ta.select(); document.execCommand('copy');
-            document.body.removeChild(ta);
-            var btn = document.getElementById('remindCopyAll');
-            btn.textContent = '✅ コピー済み';
-            setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
-        }
-    });
 
     // ===== 幹事モード =====
     document.getElementById('adminToggle').addEventListener('click', function() {
@@ -1215,22 +1205,6 @@
                 });
             })(m.name);
             actionsDiv.appendChild(delBtn);
-        }
-        // 区分変更ボタン: 区分が2つ以上ある場合、権限のある人に表示
-        var tiersForChange = getTiers();
-        if (tiersForChange.length >= 2 && canDelete) {
-            var changeBtn = document.createElement('button');
-            changeBtn.className = 'btn-sm';
-            changeBtn.textContent = '🔄';
-            changeBtn.title = m.name + 'の区分を変更';
-            changeBtn.style.cssText = 'margin-left:4px;background:#5c6bc0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer';
-            (function(memberName, currentTier) {
-                changeBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    changeTier(memberName, currentTier);
-                });
-            })(m.name, m.tier);
-            actionsDiv.appendChild(changeBtn);
         }
         // 支払い済みボタン: 未払いの人に対して誰でも押せる
         if (!m.paid && myName) {
