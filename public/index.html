@@ -127,8 +127,7 @@
         .tier-row input { flex: 1; min-width: 0 }
         .tier-row .tier-name { flex: 1; min-width: 80px }
         .tier-row .tier-amount { flex: 1; min-width: 80px }
-        .tier-row .tier-paypay { flex: 100%; font-size: 12px }
-        .tier-row .del-tier { width: 32px; height: 32px; border: none; background: #ffeaea; color: #e74c3c; border-radius: 8px; font-size: 16px; cursor: pointer; flex-shrink: 0 }
+                .tier-row .del-tier { width: 32px; height: 32px; border: none; background: #ffeaea; color: #e74c3c; border-radius: 8px; font-size: 16px; cursor: pointer; flex-shrink: 0 }
         .tier-row .del-tier:active { opacity: .7 }
         .add-tier { font-size: 12px; color: #ff0033; cursor: pointer; text-decoration: underline; display: inline-block; margin-top: 4px }
 
@@ -719,12 +718,12 @@
         for (var i = 0; i < rows.length; i++) {
             var nameInput = rows[i].querySelector('.tier-name');
             var amountInput = rows[i].querySelector('.tier-amount');
-            var paypayInput = rows[i].querySelector('.tier-paypay');
+            var tAmountType = rows[i].querySelector(".tier-amount-type");
             var tLabel = (nameInput.value || '').trim();
             var tAmount = parseInt(amountInput.value) || 0;
-            var tPaypay = (paypayInput.value || '').trim();
+            var tType = tAmountType ? tAmountType.value : "fixed";
             if (tAmount > 9999999) tAmount = 9999999;
-            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, paypayLink: tPaypay });
+            if (tLabel) tiers.push({ label: tLabel, amount: tAmount, amountType: tType });
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
