@@ -191,6 +191,7 @@
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
+            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 <b>企画者＝幹事</b>です。作成した端末から<b>幹事モード</b>で支払い確認・メンバー管理ができます。</div>
             <button class="btn btn-red" id="createBtn">✅ 作成する</button>
         </div>
 
@@ -463,19 +464,19 @@
             var card = document.createElement('div');
             card.className = 'history-card' + (h.done ? ' done' : '');
             // 済チェックボタン
-            var doneBtn = document.createElement('button');
-            doneBtn.className = 'h-done-btn';
-            doneBtn.textContent = h.done ? '✓' : '';
-            doneBtn.title = h.done ? '済を解除' : '済にする';
             (function(hid) {
-                doneBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    toggleHistoryDone(hid);
                 });
             })(h.id);
             // アイコン
             var icon = document.createElement('span');
             icon.className = 'h-icon'; icon.textContent = h.done ? '✅' : '💰';
+            icon.style.cursor = 'pointer'; icon.title = h.done ? 'タップで済を解除' : 'タップで済にする';
+            (function(hid) {
+                icon.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            })(h.id);
             // 情報部分
             var info = document.createElement('div');
             info.className = 'h-info';
@@ -521,7 +522,7 @@
             // テンプレートとして使用ボタン
             if (h.tiers && h.tiers.length > 0) {
                 var tplBtn = document.createElement('button');
-                tplBtn.className = 'h-done-btn';
+                tplBtn.className = 'h-del-btn';
                 tplBtn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;font-size:11px;width:auto;padding:0 8px;border-radius:8px';
                 tplBtn.textContent = '📋';
                 tplBtn.title = 'この設定で新規作成';
@@ -533,7 +534,6 @@
                 })(h);
                 actionsDiv.appendChild(tplBtn);
             }
-            card.appendChild(doneBtn);
             card.appendChild(icon);
             card.appendChild(info);
             card.appendChild(actionsDiv);
