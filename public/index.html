@@ -109,13 +109,6 @@
         .history-card .h-fav-btn:active { transform: scale(.9) }
         .history-card .h-fav-btn.active { background: #ffc107; color: #fff }
         .history-card.favorited { border-color: #ffc107; box-shadow: 0 1px 4px rgba(255,193,7,.2) }
-        #splitCalcUI { background: #1a2332; border: 1px solid #2a3f5f; border-radius: 12px; padding: 14px; margin: 10px 0; display: none }
-        #splitCalcUI .split-header { font-size: 13px; font-weight: bold; color: #64b5f6; margin-bottom: 10px }
-        #splitCalcUI .split-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #ccc }
-        #splitCalcUI .split-row label { min-width: 50px }
-        #splitCalcUI .split-row input[type=range] { flex: 1 }
-        #splitCalcUI .split-row .split-val { min-width: 70px; text-align: right; font-weight: bold; color: #fff }
-
         /* ローディング画面 */
         .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center }
         .loading-spinner { width: 48px; height: 48px; border: 4px solid #eee; border-top: 4px solid #ff0033; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px }
@@ -195,16 +188,6 @@
             <div>
                 <label>💴 料金区分</label>
                 <div id="tierRows"></div>
-                <div id="splitCalcUI" style="display:none;background:#1a2332;border:1px solid #2a3f5f;border-radius:12px;padding:14px;margin:10px 0">
-                    <div style="font-size:13px;font-weight:bold;color:#64b5f6;margin-bottom:10px">💱 割り勘計算</div>
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#ccc">
-                        <label style="min-width:40px">合計</label>
-                        <input type="number" id="splitTotal" placeholder="合計金額" inputmode="numeric" style="flex:1;padding:8px;border-radius:8px;border:1px solid #333;background:#111;color:#fff;font-size:14px">
-                        <span style="font-size:11px;color:#888">円</span>
-                    </div>
-                    <div id="splitSliders"></div>
-                    <div id="splitResult" style="font-size:11px;color:#888;margin-top:4px"></div>
-                </div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
             <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 作成した端末から支払い確認・メンバー管理ができます。</div>
@@ -399,7 +382,7 @@
             } else {
                 amountInput.style.display = 'none'; amountInput.required = false; amountInput.value = '0';
             }
-            if (typeof checkSplitMode === 'function') checkSplitMode();
+            // checkSplitMode disabled
         });
         if (amountTypeVal && amountTypeVal !== 'fixed') {
             amountInput.style.display = 'none'; amountInput.required = false;
@@ -1407,13 +1390,13 @@
         var badge = document.createElement('span');
         if (m.paid && m.confirmed) {
             badge.className = 'badge badge-confirm';
-            badge.textContent = '✅ 確認済';
+            badge.textContent = '✅ 幹事確認済み';
         } else if (m.paid && m.selfReported) {
             badge.className = 'badge badge-self';
-            badge.textContent = '📝 申告済';
+            badge.textContent = '💰 自己申告済み';
         } else if (m.paid) {
             badge.className = 'badge badge-paid';
-            badge.textContent = '✅ 済';
+            badge.textContent = '💰 自己申告済み';
         } else {
             badge.className = 'badge badge-unpaid';
             badge.textContent = '⏳ 未払い';
