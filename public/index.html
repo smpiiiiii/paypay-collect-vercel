@@ -978,8 +978,11 @@
         if (!me) { card.classList.add('hidden'); return; }
 
         card.classList.remove('hidden');
-        // 参加済みの場合はフォームを非表示にする
-        document.getElementById('joinCard').classList.add('hidden');
+        // 参加済みの場合はフォームのタイトルを「メンバー追加」に変更
+        var joinCard = document.getElementById('joinCard');
+        document.getElementById('joinTitle').textContent = '👥 メンバーを追加';
+        document.getElementById('joinName').placeholder = '追加する人の名前';
+        joinCard.classList.remove('hidden');
 
         var amountText = (me.amount > 0) ? '¥' + me.amount.toLocaleString() : '未定';
         var nameDiv = makeText('div', '👤 ' + me.name + '（' + (me.tier || '一般') + ' ' + amountText + '）', '');
