@@ -151,6 +151,7 @@
             .tier-row input { font-size: 12px; padding: 8px }
         }
     </style>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -200,6 +201,15 @@
     <div id="eventView" class="hidden">
         <!-- 幹事モードバナー -->
         <div id="adminBanner" class="admin-banner hidden">🔓 タップで支払い確認、🗑で参加者削除</div>
+
+        
+        <!-- QRコード表示 -->
+        <div id="qrCard" class="card hidden" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:1px solid #a5d6a7;text-align:center">
+            <h3 style="color:#2e7d32">📱 QRコード</h3>
+            <div style="font-size:12px;color:#555;margin-bottom:10px">友達にスキャンしてもらおう！</div>
+            <div id="qrCodeArea" style="display:inline-block;background:#fff;padding:16px;border-radius:12px"></div>
+            <div style="margin-top:8px;font-size:11px;color:#666" id="qrUrl"></div>
+        </div>
 
         <!-- 幹事金額変更フォーム -->
         <div id="editTiersCard" class="edit-tiers-card hidden">
@@ -1204,6 +1214,24 @@
             completeBtnDiv.classList.toggle('hidden', !isAdmin);
         }
 
+
+        
+        // QRコード表示
+        var qrCard = document.getElementById('qrCard');
+        if (qrCard) {
+            qrCard.classList.remove('hidden');
+            var qrArea = document.getElementById('qrCodeArea');
+            var qrUrlEl = document.getElementById('qrUrl');
+            if (qrArea && !qrArea.hasChildNodes()) {
+                try {
+                    var qr = qrcode(0, 'M');
+                    qr.addData(location.href);
+                    qr.make();
+                    qrArea.innerHTML = qr.createSvgTag(5, 0);
+                    qrUrlEl.textContent = location.href;
+                } catch(e) { qrCard.classList.add('hidden'); }
+            }
+        }
 
         document.getElementById('headerTitle').textContent = '💰 ' + (eventData.name || '集金');
         // ヘッダーサブ: 料金一覧
