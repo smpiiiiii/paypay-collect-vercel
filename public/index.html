@@ -181,17 +181,12 @@
                 <label>イベント名</label>
                 <input type="text" id="cName" placeholder="例: 3月飲み会🍻">
             </div>
-            <div style="margin-bottom:8px">
-                <label>📝 メモ（任意）</label>
-                <input type="text" id="cMemo" placeholder="例: 2次会費込み、23時集合">
-            </div>
             <div>
                 <label>💴 料金区分</label>
                 <div id="tierRows"></div>
                 <span class="add-tier" id="addTierBtn">＋ 区分を追加</span>
             </div>
-            <div style="font-size:11px;color:#666;background:#f0f4ff;border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.5">💡 作成した端末から支払い確認・メンバー管理ができます。</div>
-            <button class="btn btn-red" id="createBtn">✅ 作成する</button>
+                        <button class="btn btn-red" id="createBtn">✅ 作成する</button>
         </div>
 
         <!-- 集金履歴 -->
@@ -737,7 +732,7 @@
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
-        var memo = (document.getElementById('cMemo').value || '').trim();
+        var memo = '';
         var xhr = new XMLHttpRequest();
         xhr.open('POST', API + '/api/create', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
@@ -754,7 +749,7 @@
             } else { alert('作成に失敗: ' + xhr.status); }
         };
         xhr.onerror = function() { alert('通信エラーが発生しました'); };
-        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo }));
+        xhr.send(JSON.stringify({ name: name, priceTiers: tiers }));
     });
 
     // ===== 参加登録 =====
