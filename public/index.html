@@ -221,7 +221,8 @@
             <h3 style="color:#e65100">📣 未払い催促</h3>
             <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.5">未払いの参加者リストをLINEグループに共有して催促できます。</div>
             <div id="unpaidPreview" style="font-size:12px;color:#333;margin-bottom:8px;background:#fff;padding:10px;border-radius:8px;line-height:1.6"></div>
-            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促する</button>
+            <button class="btn btn-remind" id="remindBtn">📣 LINEで催促</button>
+            <button class="btn btn-outline" id="remindCopyBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 催促文をコピー</button>
         </div>
 
 
@@ -283,10 +284,11 @@
         <div class="share-btns">
             <button class="btn btn-outline" id="refreshBtn">🔄 更新</button>
             <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
+            <button class="btn btn-outline" id="copyUrlBtn">📋 URLコピー</button>
         </div>
         <!-- 未払いがいる場合のみ表示される簡易催促ボタン（幹事でなくても使える） -->
         <div id="remindBtnSimple" class="hidden" style="margin-top:6px">
-            <button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px">📣 未払いの人にLINEで催促</button>
+            <div style="display:flex;gap:6px"><button class="btn btn-remind" id="remindBtnAll" style="font-size:12px;padding:10px;flex:1">📣 LINE催促</button><button class="btn btn-outline" id="remindCopyAll" style="font-size:12px;padding:10px;flex:1">📋 催促文コピー</button></div>
         </div>
         <div class="admin-toggle" id="adminToggle">🔐 幹事モード</div>
         <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#999;text-decoration:underline">＋ 自分も新しい集金を作成する</a></div>
@@ -574,32 +576,25 @@
         }
         if (tiers.length === 0) { alert('区分名を1つ以上入力してください'); return; }
 
-        var memo = (document.getElementById('cMemo').value || '').trim();
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', API + '/api/create', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                var data = JSON.parse(xhr.responseText);
-                // 幹事トークンをlocalStorageに保存
-                if (data.adminToken) {
-                    try { localStorage.setItem('collect_admin_' + data.id, data.adminToken); } catch(e) {}
-                }
-                // 履歴に追加
-                addToHistory(data.id, name);
-                location.href = '/collect/' + data.id;
-            } else { alert('作成に失敗: ' + xhr.status); }
-        };
-        xhr.onerror = function() { alert('通信エラーが発生しました'); };
-        xhr.send(JSON.stringify({ name: name, priceTiers: tiers, memo: memo }));
-    });
-
-    // ===== 参加登録 =====
-    document.getElementById('joinBtn').addEventListener('click', function() {
-        var name = document.getElementById('joinName').value.trim();
-        var tier = document.getElementById('joinTier').value;
-        if (!name) { alert('名前を入力してください'); return; }
-        // 招待者名を取得
+        var memo = (document.getElementById('cM    document.getElementById('shareBtn').addEventListener('click', function() {
+        var refName = myName ? encodeURIComponent(myName) : '';
+        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var tiers = getTiers();
+        var members = eventData ? (eventData.members || []) : [];
+        var paid = 0;
+        for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
+        var tierInfo = '';
+        if (tiers.length > 1) {
+            tierInfo = tiers.map(function(t) { return t.label + ': ¥' + (t.amount || 0).toLocaleString(); }).join(' / ');
+        } else if (tiers.length === 1) {
+            tierInfo = '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
+        }
+        var eventName = eventData ? (eventData.name || '集金') : '集金';
+        var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
+        // LINEに直接共有
+        var lineUrl = 'https://line.me/R/share?text=' + encodeURIComponent(text);
+        window.open(lineUrl, '_blank');
+    });�
         var refName = '';
         try { refName = localStorage.getItem('collect_ref_' + eventId) || ''; } catch(e) {}
         var addedByName = myName || refName || '';
@@ -642,10 +637,29 @@
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
         // LINE共有が使える場合はLINE、それ以外はクリップボードにコピー
-        if (navigator.share) {
-            navigator.share({ title: eventName, text: text }).catch(function() {});
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
+        }
+    });
+
+    // URLコピーボタン
+    document.getElementById('copyUrlBtn').addEventListener('click', function() {
+        var refName = myName || '';
+        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var text = '💰 ' + eventName + '\n\n👇 参加・支払い報告はこちら\n' + url;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                var btn = document.getElementById('copyUrlBtn');
+                btn.textContent = '✅ コピー済み';
+                setTimeout(function() { btn.textContent = '📋 URLコピー'; }, 2000);
+            });
         } else {
-            navigator.clipboard.writeText(text).then(function() { alert('📋 共有テキストをコピーしました！LINEに貼り付けて送ってね'); });
+            var ta = document.createElement('textarea');
+            ta.value = text; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+            var btn = document.getElementById('copyUrlBtn');
+            btn.textContent = '✅ コピー済み';
+            setTimeout(function() { btn.textContent = '📋 URLコピー'; }, 2000);
         }
     });
 
@@ -693,10 +707,27 @@
     document.getElementById('remindBtn').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        if (navigator.share) {
-            navigator.share({ title: '支払いリマインダー', text: text }).catch(function() {});
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
+        }
+    });
+
+    // 催促文コピーボタン（詳細カード内）
+    document.getElementById('remindCopyBtn').addEventListener('click', function() {
+        var text = buildRemindMessage();
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                var btn = document.getElementById('remindCopyBtn');
+                btn.textContent = '✅ コピー済み';
+                setTimeout(function() { btn.textContent = '📋 催促文をコピー'; }, 2000);
+            });
         } else {
-            navigator.clipboard.writeText(text).then(function() { alert('📋 催促テキストをコピーしました！'); });
+            var ta = document.createElement('textarea');
+            ta.value = text; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+            var btn = document.getElementById('remindCopyBtn');
+            btn.textContent = '✅ コピー済み';
+            setTimeout(function() { btn.textContent = '📋 催促文をコピー'; }, 2000);
         }
     });
 
@@ -704,10 +735,27 @@
     document.getElementById('remindBtnAll').addEventListener('click', function() {
         var text = buildRemindMessage();
         if (!text) { alert('未払いの参加者はいません🎉'); return; }
-        if (navigator.share) {
-            navigator.share({ title: '支払いリマインダー', text: text }).catch(function() {});
+        var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text); window.open(lineUrl, "_blank");
+        }
+    });
+
+    // 催促文コピーボタン（メイン画面）
+    document.getElementById('remindCopyAll').addEventListener('click', function() {
+        var text = buildRemindMessage();
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                var btn = document.getElementById('remindCopyAll');
+                btn.textContent = '✅ コピー済み';
+                setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
+            });
         } else {
-            navigator.clipboard.writeText(text).then(function() { alert('📋 催促テキストをコピーしました！'); });
+            var ta = document.createElement('textarea');
+            ta.value = text; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+            var btn = document.getElementById('remindCopyAll');
+            btn.textContent = '✅ コピー済み';
+            setTimeout(function() { btn.textContent = '📋 催促文コピー'; }, 2000);
         }
     });
 
@@ -1077,13 +1125,15 @@
         info.className = 'info';
         var nameEl = document.createElement('div');
         nameEl.className = 'name';
-        var nameText = (m.name || '') + (m.name === myName ? ' 👈' : '');
+        var safeName = (m.name || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var nameHtml = safeName + (m.name === myName ? ' 👈' : '');
         if (m.addedBy && m.addedBy !== m.name && m.addedBy !== '幹事') {
-            nameText += '（' + m.addedBy + 'の招待）';
+            var safeRef = m.addedBy.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            nameHtml += '<span style="font-size:10px;color:#999;margin-left:2px">（' + safeRef + 'の紹介）</span>';
         } else if (m.addedBy === '幹事') {
-            nameText += '（幹事が追加）';
+            nameHtml += '<span style="font-size:10px;color:#999;margin-left:2px">（幹事が追加）</span>';
         }
-        nameEl.textContent = nameText;
+        nameEl.innerHTML = nameHtml;
         var meta = document.createElement('div');
         meta.className = 'meta';
 
