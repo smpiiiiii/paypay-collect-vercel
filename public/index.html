@@ -74,7 +74,7 @@
         .msg { text-align: center; padding: 16px; color: #999; font-size: 12px }
         .share-btns { display: flex; gap: 8px; margin-top: 8px }
         .share-btns .btn { flex: 1; font-size: 12px; padding: 10px }
-        #shareBtn::after, #remindBtn::after, #remindBtnAll::after { content: "長押しでコピー"; display: block; font-size: 9px; opacity: 0.6; margin-top: 2px }
+        
         .admin-toggle { font-size: 11px; color: #999; text-align: center; margin-top: 8px; cursor: pointer; text-decoration: underline }
         .hidden { display: none }
 
@@ -291,6 +291,7 @@
         <div class="share-btns">
             <button class="btn btn-outline" id="refreshBtn">🔄 更新</button>
             <button class="btn btn-green" id="shareBtn">📤 LINE共有</button>
+            <button class="btn btn-outline" id="copyUrlBtn" style="margin-top:6px;font-size:12px;padding:8px">📋 URLをコピー</button>
         </div>
         <!-- 未払いがいる場合のみ表示される簡易催促ボタン（幹事でなくても使える） -->
         <div id="completeBtnDiv" class="hidden" style="margin-top:6px;text-align:center"><button class="btn btn-green" id="completeBtn" style="font-size:14px;padding:12px">🎉 集金完了！</button></div>
@@ -914,6 +915,34 @@
 
 
 
+
+
+    document.getElementById('copyUrlBtn').addEventListener('click', function() {
+        var refName = myName ? encodeURIComponent(myName) : '';
+        var url = location.origin + '/collect/' + eventId + (refName ? '?ref=' + refName : '');
+        var evName = eventData ? (eventData.name || '集金') : '集金';
+        var text = '💰 ' + evName + '\n\n👇 参加・支払い報告はこちら\n' + url;
+        var btn = this;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                btn.textContent = '✅ コピー済み';
+                setTimeout(function() { btn.textContent = '📋 URLをコピー'; }, 2000);
+            }).catch(function() {
+                fallbackCopy(text, btn);
+            });
+        } else {
+            fallbackCopy(text, btn);
+        }
+    });
+    function fallbackCopy(text, btn) {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); btn.textContent = '✅ コピー済み'; }
+        catch(e) { btn.textContent = '❌ 失敗'; }
+        document.body.removeChild(ta);
+        setTimeout(function() { btn.textContent = '📋 URLをコピー'; }, 2000);
+    }
 
     addLongPress('shareBtn', function() {
         var refName = myName ? encodeURIComponent(myName) : '';
