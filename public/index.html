@@ -843,9 +843,9 @@
         for (var i = 0; i < members.length; i++) { if (members[i].paid) paid++; }
         var tierInfo = '';
         if (tiers.length > 1) {
-            tierInfo = tiers.map(function(t) { var al = (t.amountType === 'tbd') ? '割り勘/未定' : '¥' + (t.amount || 0).toLocaleString(); return t.label + ': ' + al; }).join(' / ');
+            tierInfo = tiers.map(function(t) { var al = (t.amountType === 'tbd' || !t.amount) ? '未定' : '¥' + t.amount.toLocaleString(); return t.label + ': ' + al; }).join(' / ');
         } else if (tiers.length === 1) {
-            tierInfo = (tiers[0].amountType === 'tbd') ? '割り勘/未定' : '¥' + (tiers[0].amount || 0).toLocaleString() + '/人';
+            tierInfo = (tiers[0].amountType === 'tbd' || !tiers[0].amount) ? '未定' : '¥' + tiers[0].amount.toLocaleString() + '/人';
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
         var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
@@ -1154,7 +1154,7 @@
         for (var k = 0; k < tiers.length; k++) {
             var opt = document.createElement('option');
             opt.value = tiers[k].label || '';
-            var tierAmtLabel = (tiers[k].amountType === 'tbd') ? '割り勘/未定' : '¥' + (tiers[k].amount || 0).toLocaleString();
+            var tierAmtLabel = (tiers[k].amountType === 'tbd' || !tiers[k].amount) ? '未定' : '¥' + tiers[k].amount.toLocaleString();
             opt.textContent = (tiers[k].label || '一般') + '（' + tierAmtLabel + '）';
             tierSelect.appendChild(opt);
         }
@@ -1345,7 +1345,7 @@
         // 料金区分バッジ
         var tierBadge = document.createElement('span');
         tierBadge.className = 'badge badge-tier';
-        var mAmtLabel = (m.amount === 0 && eventData) ? (function() { var ti = (eventData.priceTiers || []).find(function(t) { return t.label === m.tier; }); return (ti && ti.amountType === 'tbd') ? '割り勘/未定' : '¥0'; })() : '¥' + (m.amount || 0).toLocaleString();
+        var mAmtLabel = (!m.amount) ? '未定' : '¥' + m.amount.toLocaleString();
         tierBadge.textContent = (m.tier || '一般') + ' ' + mAmtLabel;
         meta.appendChild(tierBadge);
 
@@ -1558,7 +1558,7 @@
         if (options.length === 0) { alert('変更できる区分がありません'); return; }
         var msg = '「' + name + '」の区分を変更\n現在: ' + (currentTier || '一般') + '\n\n変更先を選んでください:\n';
         for (var i = 0; i < options.length; i++) {
-            var ctAmtLabel = (options[i].amountType === 'tbd') ? '割り勘/未定' : '¥' + (options[i].amount || 0).toLocaleString();
+            var ctAmtLabel = (options[i].amountType === 'tbd' || !options[i].amount) ? '未定' : '¥' + options[i].amount.toLocaleString();
             msg += (i + 1) + '. ' + options[i].label + '（' + ctAmtLabel + '）\n';
         }
         var choice = prompt(msg, '1');
