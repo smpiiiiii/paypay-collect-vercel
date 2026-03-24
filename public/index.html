@@ -1191,6 +1191,45 @@
         }
         actionsDiv.appendChild(badge);
 
+        // 済バッジ長押しで支払い情報を表示
+        if (m.paid) {
+            (function(member, badgeEl) {
+                var timer = null;
+                function showInfo() {
+                    var info = [];
+                    if (member.paidAt) {
+                        info.push('💰 支払日時: ' + new Date(member.paidAt).toLocaleString('ja-JP'));
+                    }
+                    if (member.selfReported) {
+                        info.push('📝 本人が自己申告');
+                    }
+                    if (member.actionBy) {
+                        info.push('👤 操作者: ' + member.actionBy);
+                    }
+                    if (member.confirmed) {
+                        info.push('✅ 幹事が確認済み');
+                    }
+                    if (info.length === 0) info.push('支払い済み');
+                    alert(member.name + ' の支払い情報\n\n' + info.join('\n'));
+                }
+                function onStart(e) {
+                    timer = setTimeout(function() { timer = 'done'; showInfo(); }, 600);
+                }
+                function onEnd(e) {
+                    if (timer === 'done') { e.preventDefault(); e.stopPropagation(); }
+                    else clearTimeout(timer);
+                    timer = null;
+                }
+                badgeEl.style.cursor = 'pointer';
+                badgeEl.addEventListener('touchstart', onStart, { passive: true });
+                badgeEl.addEventListener('touchend', onEnd);
+                badgeEl.addEventListener('touchcancel', function() { clearTimeout(timer); timer = null; });
+                badgeEl.addEventListener('mousedown', onStart);
+                badgeEl.addEventListener('mouseup', onEnd);
+                badgeEl.addEventListener('mouseleave', function() { clearTimeout(timer); timer = null; });
+            })(m, badge);
+        }
+
         // 削除ボタン表示条件: 幹事 OR 自分自身 OR 自分が招待した人
         var canDelete = isAdmin || (myName && (m.name === myName || m.addedBy === myName));
         if (canDelete) {
