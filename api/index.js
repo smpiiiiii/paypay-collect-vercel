@@ -129,6 +129,7 @@ module.exports = async (req, res) => {
         const oldPaid = member.paid;
         member.paid = newPaid;
         member.paidAt = newPaid ? new Date().toISOString() : null;
+        member.actionBy = newPaid ? (body.actionBy || '不明').trim() : null;
         // 未払いに戻した場合、自己申告と幹事確認もリセット
         if (!newPaid) {
           member.selfReported = false;
@@ -157,7 +158,7 @@ module.exports = async (req, res) => {
       if (typeof event === 'string') event = JSON.parse(event);
       const member = event.members.find(m => m.name === body.name);
       if (member && !member.paid) {
-        member.paid = true; member.paidAt = new Date().toISOString(); member.selfReported = true;
+        member.paid = true; member.paidAt = new Date().toISOString(); member.selfReported = true; member.actionBy = body.name + '（本人）';
       }
       await saveEvent(id, event);
       return res.status(200).json({ status: 'ok' });
@@ -176,7 +177,7 @@ module.exports = async (req, res) => {
       const member = event.members.find(m => m.name === body.name);
       if (member) {
         member.confirmed = !member.confirmed;
-        if (member.confirmed) { member.paid = true; member.paidAt = member.paidAt || new Date().toISOString(); }
+        if (member.confirmed) { member.paid = true; member.paidAt = member.paidAt || new Date().toISOString(); member.actionBy = '幹事確認'; }
       }
       await saveEvent(id, event);
       return res.status(200).json({ status: 'ok' });
