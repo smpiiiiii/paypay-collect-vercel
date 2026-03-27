@@ -10,6 +10,9 @@
     <meta name="theme-color" content="#ff0033">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="/icon-512.png">
+    <link rel="apple-touch-icon" href="/icon-512.png">
+    <meta name="apple-mobile-web-app-title" content="集金チェッカー">
     <!-- LINE LIFF SDK 削除済み — 名前手入力方式に変更 -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box }
@@ -868,7 +871,8 @@
             tierInfo = (tiers[0].amountType === 'tbd' || !tiers[0].amount) ? '未定' : '¥' + tiers[0].amount.toLocaleString() + '/人';
         }
         var eventName = eventData ? (eventData.name || '集金') : '集金';
-        var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
+        var text = '\uD83D\uDCB0 ' + eventName + '\n\n\uD83D\uDC47 \u53C2\u52A0\u30FB\u652F\u6255\u3044\u5831\u544A\u306F\u3053\u3061\u3089\n' + url;
+
         // LINE共有が使える場合はLINE、それ以外はクリップボードにコピー
         var lineUrl = "https://line.me/R/share?text=" + encodeURIComponent(text);
         window.open(lineUrl, "_blank");
