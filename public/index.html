@@ -981,6 +981,14 @@
         var total = 0;
         var ms = eventData ? (eventData.members || []) : [];
         for (var i = 0; i < ms.length; i++) total += (ms[i].amount || 0);
+        // 未払いメンバーがいる場合は確認ダイアログを表示
+        var unpaidMembers = ms.filter(function(m) { return !m.paid; });
+        if (unpaidMembers.length > 0) {
+            var unpaidNames = unpaidMembers.map(function(m) { return '  ・' + m.name + 'さん'; }).join('\n');
+            if (!confirm('⚠️ 未払いの方が ' + unpaidMembers.length + '人います\n\n' + unpaidNames + '\n\n未払いのまま集金完了しますか？')) {
+                return;
+            }
+        }
         // 全員を確認済みにする
         if (adminToken && eventData) {
             var allMs = eventData.members || [];
@@ -1203,6 +1211,17 @@
         var completeBtnDiv = document.getElementById('completeBtnDiv');
         if (completeBtnDiv) {
             completeBtnDiv.classList.toggle('hidden', !isAdmin);
+            var cBtn = document.getElementById('completeBtn');
+            if (cBtn) {
+                if (unpaidMembers.length > 0) {
+                    cBtn.className = 'btn btn-orange';
+                    cBtn.textContent = '⚠️ 未回収 ' + unpaidMembers.length + '人 — 集金完了する';
+                } else {
+                    cBtn.className = 'btn btn-green';
+                    cBtn.textContent = '🎉 集金完了！';
+                }
+                cBtn.style.cssText = 'font-size:14px;padding:12px';
+            }
         }
 
 
